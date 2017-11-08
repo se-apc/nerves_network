@@ -15,6 +15,7 @@ defmodule Nerves.Network.DHCPManager do
             dhcp_retry_timer: nil
 
   def start_link(ifname, settings, opts \\ []) do
+    Logger.debug fn -> "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
@@ -40,6 +41,7 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
     state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
+    Logger.debug fn -> "#{__MODULE__}: initialising.... state: #{inspect state}" end
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
