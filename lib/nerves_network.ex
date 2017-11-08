@@ -33,7 +33,7 @@ defmodule Nerves.Network do
 
   """
   def setup(ifname, settings \\ []) do
-    Logger.debug "#{__MODULE__} setup(#{ifname}, #{inspect settings})"
+    Logger.debug fn -> "#{__MODULE__} setup(#{ifname}, #{inspect settings})" end
     Nerves.Network.Config.put ifname, settings
   end
 
@@ -41,7 +41,7 @@ defmodule Nerves.Network do
   Stop all control of `ifname`
   """
   def teardown(ifname) do
-    Logger.debug "#{__MODULE__} teardown(#{ifname})"
+    Logger.debug fn -> "#{__MODULE__} teardown(#{ifname})" end
     Nerves.Network.Config.drop ifname
   end
 
