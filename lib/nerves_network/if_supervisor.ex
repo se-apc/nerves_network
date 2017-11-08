@@ -1,4 +1,5 @@
 defmodule Nerves.Network.IFSupervisor do
+  require Logger
   use Supervisor
 
   @moduledoc false
@@ -15,14 +16,19 @@ defmodule Nerves.Network.IFSupervisor do
     setup(to_string(ifname), settings)
   end
   def setup(ifname, settings) do
+    Logger.debug fn -> "#{__MODULE__} setup(#{ifname}, #{inspect settings})" end
     pidname = pname(ifname)
+    Logger.debug fn -> "#{__MODULE__} pidname: #{inspect pidname}" end
     if !Process.whereis(pidname) do
       manager_module = manager(if_type(ifname), settings)
+      Logger.debug fn -> "#{__MODULE__} manager_module: #{inspect manager_module}" end
       child = worker(manager_module,
                     [ifname, settings, [name: pidname]],
                     id: pidname)
+      Logger.debug fn -> "#{__MODULE__} child: #{inspect child}" end
       Supervisor.start_child(__MODULE__, child)
     else
+      Logger.debug ":error, :already_added"
       {:error, :already_added}
     end
   end
@@ -53,14 +59,25 @@ defmodule Nerves.Network.IFSupervisor do
   # Return the appropriate interface manager based on the interface's type
   # and settings
   defp manager(:wired, settings) do
+    Logger.debug fn -> "if_supervisor.ex .manager" end
+    ipv4_manager = 
     case Keyword.get(settings, :ipv4_address_method) do
-      :static -> Nerves.Network.StaticManager
-      :linklocal -> Nerves.Network.LinkLocalManager
-      :dhcp -> Nerves.Network.DHCPManager
+        :static -> Nerves.Network.StaticManager
+        :linklocal -> Nerves.Network.LinkLocalManager
+        :dhcp -> Nerves.Network.DHCPManager
+
+        # Default to DHCP if unset; crash if anything else.
+        nil -> Nerves.Network.DHCPManager
+    end
+    ipv6_manager = 
+    case Keyword.get(settings, :ipv6_address_method) do
+      :dhcp -> Nerves.Network.DHCPv6Manager
 
       # Default to DHCP if unset; crash if anything else.
-      nil -> Nerves.Network.DHCPManager
+      nil -> Nerves.Network.DHCPv6Manager
     end
+    #ipv4_manager
+    ipv6_manager
   end
   defp manager(:wireless, _settings) do
     Nerves.Network.WiFiManager
