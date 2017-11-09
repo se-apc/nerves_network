@@ -20,13 +20,31 @@ defmodule Nerves.Network.IFSupervisor do
     pidname = pname(ifname)
     Logger.debug fn -> "#{__MODULE__} pidname: #{inspect pidname}" end
     if !Process.whereis(pidname) do
-      manager_module = manager(if_type(ifname), settings)
-      Logger.debug fn -> "#{__MODULE__} manager_module: #{inspect manager_module}" end
-      child = worker(manager_module,
-                    [ifname, settings, [name: pidname]],
-                    id: pidname)
-      Logger.debug fn -> "#{__MODULE__} child: #{inspect child}" end
-      Supervisor.start_child(__MODULE__, child)
+      manager_modules = managers(if_type(ifname), settings)
+      Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
+      children = for manager <- manager_modules  do
+            child_name = pname(ifname, manager)
+            worker(manager,
+                                                      [ifname, settings, [name: child_name]],
+                                                      #                                                      id: {pidname, manager})
+                                                      id: child_name)
+        end
+      Logger.debug fn -> "#{__MODULE__} children: #{inspect children}" end
+
+      #result = supervise(children, [strategy: :one_for_one])
+      result = {:ok, for child <- children do
+                        Logger.debug  fn -> "Starting child: #{inspect child}..." end
+                        retval = Supervisor.start_child(__MODULE__, child)
+                        Logger.debug  fn -> "   retval = #{inspect retval}..." end
+                        retval
+                     end #For child <- children 
+        }
+
+      #which_children = Supervisor.which_children(pidname);
+      #Logger.debug fn -> "#{__MODULE__} which_children: #{inspect which_children}" end
+      Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
+
+      result
     else
       Logger.debug ":error, :already_added"
       {:error, :already_added}
@@ -36,6 +54,7 @@ defmodule Nerves.Network.IFSupervisor do
   def teardown(ifname) do
     pidname = pname(ifname)
     if Process.whereis(pidname) do
+      #foreach Supervisor.wich_children
       Supervisor.terminate_child(__MODULE__, pidname)
       Supervisor.delete_child(__MODULE__, pidname)
     else
@@ -56,31 +75,59 @@ defmodule Nerves.Network.IFSupervisor do
     String.to_atom("Nerves.Network.Interface." <> ifname)
   end
 
-  # Return the appropriate interface manager based on the interface's type
-  # and settings
-  defp manager(:wired, settings) do
-    Logger.debug fn -> "if_supervisor.ex .manager" end
-    ipv4_manager = 
-    case Keyword.get(settings, :ipv4_address_method) do
-        :static -> Nerves.Network.StaticManager
-        :linklocal -> Nerves.Network.LinkLocalManager
-        :dhcp -> Nerves.Network.DHCPManager
-
-        # Default to DHCP if unset; crash if anything else.
-        nil -> Nerves.Network.DHCPManager
-    end
-    ipv6_manager = 
-    case Keyword.get(settings, :ipv6_address_method) do
-      :dhcp -> Nerves.Network.DHCPv6Manager
-
-      # Default to DHCP if unset; crash if anything else.
-      nil -> Nerves.Network.DHCPv6Manager
-    end
-    #ipv4_manager
-    ipv6_manager
+  defp pname(ifname, manager) do
+    String.to_atom("Nerves.Network.Interface." <> ifname <> to_string(manager))
   end
-  defp manager(:wireless, _settings) do
-    Nerves.Network.WiFiManager
+
+  defp ipv4_managers(settings) do
+    case Keyword.get(settings, :ipv4_address_method) do
+      :static -> [Nerves.Network.StaticManager]
+      :linklocal -> [Nerves.Network.LinkLocalManager]
+      :dhcp -> [Nerves.Network.DHCPManager]
+
+      # We may want no IPv4 manager to be selected
+      nil -> []
+    end
+  end
+
+  defp ipv6_managers(settings) do
+      static_managers = if settings[:ipv6_static] do
+                          [] #Should contain Nerves.Network.Ipv6StaticManager
+                        else
+                          []
+                        end
+
+      auto_managers = if settings[:ipv6_autoconf] do
+                          [] #Should contain Nerves.Network.Ipv6AutoconfManager
+                      else
+                          []
+                      end
+
+      dhcp_managers = case settings[:ipv6_dhcp] do
+                          :stateful-> [Nerves.Network.DHCPv6Manager]
+                          :stateless -> [Nerves.Network.DHCPv6Manager]
+                          :never -> []
+                          nil -> []
+                      end
+
+      static_managers ++ auto_managers ++ dhcp_managers
+  end
+
+  # Return the appropriate interface managers based on the interface's type
+  # and settings. Typically there should be zero or one only manager for IPv4, whereas there may be
+  # multiple managers for IPv6 (i.e. static, autoconf, DHCPv6)
+  defp managers(:wired, settings) do
+    Logger.debug fn -> "if_supervisor.ex .managers(:wired, settings = #{inspect settings})" end
+
+    managers_v4 = ipv4_managers(settings)
+    managers_v6 = ipv6_managers(settings)
+
+    managers_v4 ++ managers_v6
+  end
+
+  #There currently is only one manager for WiFi
+  defp managers(:wireless, _settings) do
+    [Nerves.Network.WiFiManager]
   end
 
   # Categorize networks into wired and wireless based on their if names
