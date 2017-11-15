@@ -2,8 +2,10 @@ defmodule Nerves.Network.DHCPv6Manager do
   use GenServer
   require Logger
   import Nerves.Network.Utils
+  use Nerves.Network.Debug
 
   @moduledoc false
+  @debug?    false
 
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
@@ -16,9 +18,7 @@ defmodule Nerves.Network.DHCPv6Manager do
 
   def start_link(ifname, settings, opts \\ []) do
     Logger.debug fn -> "DHCPv6Manager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
-    retval = GenServer.start_link(__MODULE__, {ifname, settings}, opts)
-    Logger.debug fn -> "retval = #{inspect retval}" end
-    retval
+    GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
   # defmodule EventHandler do
@@ -38,12 +38,17 @@ defmodule Nerves.Network.DHCPv6Manager do
   # end
 
   def init({ifname, settings}) do
+    unless @debug? do
+      Logger.disable(self())
+    end
+
     # Register for nerves_network_interface and dhclient events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
     {:ok, _} = Registry.register(Nerves.Dhclient, ifname, [])
 
     state = %Nerves.Network.DHCPv6Manager{settings: settings, ifname: ifname}
     Logger.debug fn -> "DHCPv6Manager initialising.... state: #{inspect state}" end
+    Logger.debug fn -> "#{__MODULE__}:   settings: #{inspect settings}" end
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -99,7 +104,7 @@ defmodule Nerves.Network.DHCPv6Manager do
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.debug "DHCPv6Manager(#{s.ifname}, #{s.context}) got event #{inspect event}"
+    Logger.debug fn -> "DHCPv6Manager(#{s.ifname}, #{s.context}) got event #{inspect event}" end
     {:noreply, s}
   end
 
@@ -116,7 +121,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   def handle_info(event, s) do
-    Logger.debug "DHCPv6Manager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
+    Logger.debug fn -> "DHCPv6Manager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}" end
     {:noreply, s}
   end
 
@@ -228,7 +233,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
   defp start_dhclient(state) do
     state = stop_dhclient(state)
-    {:ok, pid} = Nerves.Network.Dhclient.start_link(state.ifname)
+    {:ok, pid} = Nerves.Network.Dhclient.start_link({state.ifname, state.settings[:ipv6_dhcp]})
     %Nerves.Network.DHCPv6Manager{state | dhcp_pid: pid}
   end
 
@@ -251,5 +256,4 @@ defmodule Nerves.Network.DHCPv6Manager do
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
-
 end
