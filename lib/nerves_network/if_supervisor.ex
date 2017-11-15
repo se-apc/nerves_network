@@ -1,11 +1,15 @@
 defmodule Nerves.Network.IFSupervisor do
   require Logger
   use Supervisor
+  use Nerves.Network.Debug
 
   @moduledoc false
+  @debug?    true
 
   def start_link(options \\ []) do
-    Supervisor.start_link(__MODULE__, [], options)
+    {:ok, sup_pid} = Supervisor.start_link(__MODULE__, [], options)
+    Logger.debug fn -> "#{__MODULE__}: sup_pid = #{inspect sup_pid}" end
+    {:ok, sup_pid}
   end
 
   def init([]) do
@@ -15,33 +19,34 @@ defmodule Nerves.Network.IFSupervisor do
   def setup(ifname, settings) when is_atom(ifname) do
     setup(to_string(ifname), settings)
   end
+
   def setup(ifname, settings) do
+    unless @debug? do
+        Logger.disable(self())
+    end
+
     Logger.debug fn -> "#{__MODULE__} setup(#{ifname}, #{inspect settings})" end
     pidname = pname(ifname)
     Logger.debug fn -> "#{__MODULE__} pidname: #{inspect pidname}" end
     if !Process.whereis(pidname) do
       manager_modules = managers(if_type(ifname), settings)
       Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
-      children = for manager <- manager_modules  do
-            child_name = pname(ifname, manager)
-            worker(manager,
-                                                      [ifname, settings, [name: child_name]],
-                                                      #                                                      id: {pidname, manager})
-                                                      id: child_name)
+
+      children = 
+        for manager <- manager_modules  do
+          child_name = pname(ifname, manager)
+          worker(manager, [ifname, settings, [name: child_name]], id: {pname(ifname), child_name})
         end
       Logger.debug fn -> "#{__MODULE__} children: #{inspect children}" end
 
-      #result = supervise(children, [strategy: :one_for_one])
       result = {:ok, for child <- children do
-                        Logger.debug  fn -> "Starting child: #{inspect child}..." end
+                        Logger.debug  fn -> "#{__MODULE__} Starting child: #{inspect child}..." end
                         retval = Supervisor.start_child(__MODULE__, child)
-                        Logger.debug  fn -> "   retval = #{inspect retval}..." end
+                        Logger.debug  fn -> "#{__MODULE__}    retval = #{inspect retval}..." end
                         retval
                      end #For child <- children 
         }
 
-      #which_children = Supervisor.which_children(pidname);
-      #Logger.debug fn -> "#{__MODULE__} which_children: #{inspect which_children}" end
       Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
 
       result
@@ -51,15 +56,38 @@ defmodule Nerves.Network.IFSupervisor do
     end
   end
 
+  defp terminate_child(child) do
+    #Child is of the following sample spec: {{:"Nerves.Network.Interface.ens33", :"Elixir.Nerves.Network.DHCPv6Manager.ens33"}, #PID<0.216.0>, :worker, [Nerves.Network.DHCPv6Manager]}
+    {{parent_name, child_name}, _pid, :worker, _} = child
+    result1 = Supervisor.terminate_child(__MODULE__, {parent_name, child_name})
+    result2 = Supervisor.delete_child(__MODULE__, {parent_name, child_name})
+    {result1, result2}
+  end
+
+  defp belongs_to_if(child, ifname) do
+    {{parent_name, _child_name}, _pid, :worker, _list} = child
+    parent_name == pname(ifname)
+  end
+
+  defp if_children(children, ifname) do
+    Enum.filter(children, fn(child) -> belongs_to_if(child, ifname) end)
+  end
+
   def teardown(ifname) do
-    pidname = pname(ifname)
-    if Process.whereis(pidname) do
+    Logger.debug fn -> "#{__MODULE__}: teardown(ifname = #{inspect ifname})" end
       #foreach Supervisor.wich_children
-      Supervisor.terminate_child(__MODULE__, pidname)
-      Supervisor.delete_child(__MODULE__, pidname)
-    else
-      {:error, :not_started}
-    end
+      sup_pid = 
+        __MODULE__
+        |> Process.whereis()
+      Logger.debug fn -> "#{__MODULE__} sup_pid: #{inspect sup_pid}" end
+      if sup_pid do
+        children = Supervisor.which_children(sup_pid) 
+                    |> if_children(ifname)
+        Enum.each children, fn child -> terminate_child(child) end
+        Logger.debug fn -> "#{__MODULE__} which_children: #{inspect children}" end
+      else
+        {:error, :not_started}
+      end
   end
 
   def scan(ifname) do
@@ -76,7 +104,7 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   defp pname(ifname, manager) do
-    String.to_atom("Nerves.Network.Interface." <> ifname <> to_string(manager))
+    String.to_atom(to_string(manager) <> "." <> ifname)
   end
 
   defp ipv4_managers(settings) do
@@ -117,7 +145,7 @@ defmodule Nerves.Network.IFSupervisor do
   # and settings. Typically there should be zero or one only manager for IPv4, whereas there may be
   # multiple managers for IPv6 (i.e. static, autoconf, DHCPv6)
   defp managers(:wired, settings) do
-    Logger.debug fn -> "if_supervisor.ex .managers(:wired, settings = #{inspect settings})" end
+    Logger.debug fn -> "#{__MODULE__}: if_supervisor.ex .managers(:wired, settings = #{inspect settings})" end
 
     managers_v4 = ipv4_managers(settings)
     managers_v6 = ipv6_managers(settings)
