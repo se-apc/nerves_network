@@ -25,15 +25,15 @@ defmodule Nerves.Network.Dhclient do
   This module interacts with `dhclient` to interact with DHCP servers.
   """
 
-  def start_link(ifname), do: start_link(__MODULE__, ifname)
+  def start_link(args), do: start_link(__MODULE__, args)
 
   @doc """
   Start and link a Dhclient process for the specified interface (i.e., eth0,
   wlan0).
   """
-  def start_link(_modname, ifname) do
-    Logger.debug fn -> "Dhclient starting for #{inspect ifname}" end
-    GenServer.start_link(__MODULE__, ifname)
+  def start_link(_modname, args) do
+    Logger.debug fn -> "#{__MODULE__}: Dhclient starting for args: #{inspect args}" end
+    GenServer.start_link(__MODULE__, args)
   end
 
   @doc """
@@ -60,27 +60,64 @@ defmodule Nerves.Network.Dhclient do
     GenServer.stop(pid)
   end
 
-  def init(ifname) do
-    Logger.info fn -> "Starting Dhclient wrapper for #{inspect  ifname}" end
+  defp dhclient_mode_args(:stateful) do
+    []
+  end
+
+  defp dhclient_mode_args(:stateless) do
+    ["-S"]
+  end
+
+  defp runtime_lease_file(runtime) do
+      if Keyword.has_key?(runtime, :lease_file) do
+        [ "-lf" | Keyword.get_values(runtime, :lease_file) ]
+      else
+        []
+      end
+  end
+
+  defp runtime_pid_file(runtime) do
+      if Keyword.has_key?(runtime, :pid_file) do
+        [ "-pf" | Keyword.get_values(runtime, :pid_file) ]
+      else
+        []
+      end
+  end
+
+  # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
+  defp dhclient_runtime() do
+  
+    [ipv6: runtime] = Application.get_env(:nerves_network, :dhclient, [])
+     Logger.debug fn -> "#{__MODULE__}: runtime options = #{inspect runtime}" end
+     runtime_lease_file(runtime) ++ runtime_pid_file(runtime)
+  end
+
+  def init(args) do
+    {ifname, mode} = args
+    Logger.info fn -> "#{__MODULE__}: Starting Dhclient wrapper for ifname: #{inspect ifname} mode: #{inspect mode}" end
 
     priv_path = :code.priv_dir(:nerves_network)
     port_path = "#{priv_path}/dhclient_wrapper"
+
     args = ["dhclient",
             "-6", #IPv6 
             "-sf", port_path, #The script to be invoked at the lease time
-            "-d", #force to run in foreground
-            #            "-s", "#{hostname()}", #server IP address or fully qualified domain name
-            ifname]
+            "-d"] #force to run in foreground
+            ++ dhclient_mode_args(mode)
+            ++ dhclient_runtime()
+            ++ [ifname]
+
     port = Port.open({:spawn_executable, port_path},
                      [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
 
-    Logger.info fn -> "Dhclient port: #{inspect  port}; args: #{inspect args}" end
+    Logger.info fn -> "#{__MODULE__}: Dhclient port: #{inspect  port}; args: #{inspect args}" end
 
     {:ok, %{ifname: ifname, port: port}}
   end
 
   def terminate(_reason, state) do
     # Send the command to our wrapper to shut everything down.
+    Logger.debug fn -> "#{__MODULE__}: terminate..." end
     Port.command(state.port, <<@terminate>>);
     Port.close(state.port)
     :ok
@@ -141,11 +178,5 @@ defmodule Nerves.Network.Dhclient do
     #msg = List.foldl(something_else, "", &<>/2)
     #Logger.debug "dhclient: ignoring unhandled message: #{msg}"
     {:noreply, state}
-  end
-
-  defp hostname() do
-    {:ok, hostname} = :inet.gethostname()
-    to_string(hostname)
-    |> String.trim
   end
 end
