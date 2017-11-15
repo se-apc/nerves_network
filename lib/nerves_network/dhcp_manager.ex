@@ -1,9 +1,13 @@
 defmodule Nerves.Network.DHCPManager do
+
+  @debug? false
   use GenServer
   require Logger
   import Nerves.Network.Utils
+  use Nerves.Network.Debug
 
   @moduledoc false
+  @debug?    false
 
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
@@ -34,8 +38,16 @@ defmodule Nerves.Network.DHCPManager do
   #
   #
   # end
+  
+  #  def handle_call(a, b, c) do
+    #  Logger.debug fn -> "#{__MODULE__}: handle_call: (a=#{inspect a}, b=#{inspect b}, c=#{inspect c})" end
+    #  end
 
   def init({ifname, settings}) do
+    unless @debug? do
+      Logger.disable(self())
+    end
+
     # Register for nerves_network_interface and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
     {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
