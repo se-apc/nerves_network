@@ -107,6 +107,7 @@ static void process_erlang_request(void)
     if (amount <= 0) {
         /* Error or Erlang closed the port -> we're done. */
         kill(child_pid, SIGKILL);
+        fprintf(stderr, "[%s %d]: Exitting...\r\n", __FILE__, __LINE__);
         exit(EXIT_SUCCESS);
     }
 
