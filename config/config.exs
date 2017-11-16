@@ -18,8 +18,8 @@ config :nerves_network, :default,
 
 config :nerves_network, :dhclient,
   ipv6: [
-    lease_file: "/var/system/dhclient6.leases",
-    pid_file:   "/var/system/dhclient6.pid"
+    lease_file: "/var/system/lib/dhclient6.leases",
+    pid_file:   "/var/system/run/dhclient6.pid"
   ]
 
 
