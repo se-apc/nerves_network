@@ -46,16 +46,20 @@ defmodule Nerves.Network.Config  do
   end
 
   def update(new, old) do
+    Logger.debug fn -> "#{__MODULE__}: update new = #{inspect new}" end
+    Logger.debug fn -> "#{__MODULE__}: update old = #{inspect old}" end
     {added, removed, modified} =
       changes(new, old)
 
     removed = Enum.map(removed, fn({k, _}) -> {k, %{}} end)
     modified = added ++ modified
 
+    Logger.debug fn -> "#{__MODULE__}: modified = #{inspect modified}" end
     Enum.each(modified, fn({iface, settings}) ->
       IFSupervisor.setup(iface, settings)
     end)
 
+    Logger.debug fn -> "#{__MODULE__}: removed = #{inspect removed}" end
     Enum.each(removed, fn({iface, _settings}) ->
       IFSupervisor.teardown(iface)
     end)
