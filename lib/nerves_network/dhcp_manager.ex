@@ -147,8 +147,21 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(:removed, :ifdown, state), do: state
 
   ## Context: :down
-  defp consume(:down, :ifadded, state), do: state
+  defp consume(:down, :ifadded, state) do
+    case Nerves.NetworkInterface.ifup(state.ifname) do
+      :ok ->
+        {:ok, status} = Nerves.NetworkInterface.status state.ifname
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
+        state
+          |> goto_context(:down)
+      {:error, _} ->
+        # The interface isn't quite up yet. Retry
+        Process.send_after self(), :retry_ifadded, 250
+        state
+          |> goto_context(:retry_add)
+    end
+  end
   defp consume(:down, :ifup, state) do
     state
       |> start_udhcpc

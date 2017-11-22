@@ -39,19 +39,14 @@ defmodule Nerves.Network.Config  do
   end
 
   def handle_info({:system_registry, :global, registry}, s) do
-    net_config = get_in(registry, @scope) || %{}
-    s = update(net_config, s)
-    {:noreply, s}
+    net_config = (get_in(registry, @scope) || %{})
+    {:noreply, update(net_config, s)}
   end
 
-  def update(old, old, _) do
-    {old, []}
-  end
-
+  def update(old, old), do: old
   def update(new, old) do
     {added, removed, modified} =
       changes(new, old)
-
     removed = Enum.map(removed, fn({k, _}) -> {k, %{}} end)
     modified = added ++ modified
 
