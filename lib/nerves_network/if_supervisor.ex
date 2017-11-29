@@ -4,7 +4,7 @@ defmodule Nerves.Network.IFSupervisor do
   use Nerves.Network.Debug
 
   @moduledoc false
-  @debug?    true
+  @debug?    false
 
   def start_link(options \\ []) do
     {:ok, sup_pid} = Supervisor.start_link(__MODULE__, [], options)
@@ -21,9 +21,7 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   def setup(ifname, settings) do
-    unless @debug? do
-        Logger.disable(self())
-    end
+    debug_init(@debug?)
 
     Logger.debug fn -> "#{__MODULE__} setup(#{ifname}, #{inspect settings})" end
     pidname = pname(ifname)
