@@ -68,28 +68,31 @@ defmodule Nerves.Network.Dhclient do
     ["-S"]
   end
 
-  defp runtime_lease_file(runtime) do
+  defp append_ifname(input_str, ifname) do
+    input_str <> "." <> ifname
+  end
+
+  defp runtime_lease_file(ifname, runtime) do
       if Keyword.has_key?(runtime, :lease_file) do
-        [ "-lf" | Keyword.get_values(runtime, :lease_file) ]
+        [ "-lf", Keyword.get(runtime, :lease_file) |> append_ifname(ifname) ]
       else
         []
       end
   end
 
-  defp runtime_pid_file(runtime) do
+  defp runtime_pid_file(ifname, runtime) do
       if Keyword.has_key?(runtime, :pid_file) do
-        [ "-pf" | Keyword.get_values(runtime, :pid_file) ]
+        [ "-pf", Keyword.get(runtime, :pid_file) |> append_ifname(ifname) ]
       else
         []
       end
   end
 
   # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
-  defp dhclient_runtime() do
-  
+  defp dhclient_runtime(ifname) do
     [ipv6: runtime] = Application.get_env(:nerves_network, :dhclient, [])
      Logger.debug fn -> "#{__MODULE__}: runtime options = #{inspect runtime}" end
-     runtime_lease_file(runtime) ++ runtime_pid_file(runtime)
+     runtime_lease_file(ifname, runtime) ++ runtime_pid_file(ifname, runtime)
   end
 
   def init(args) do
@@ -104,7 +107,7 @@ defmodule Nerves.Network.Dhclient do
             "-sf", port_path, #The script to be invoked at the lease time
             "-d"] #force to run in foreground
             ++ dhclient_mode_args(mode)
-            ++ dhclient_runtime()
+            ++ dhclient_runtime(ifname)
             ++ [ifname]
 
     port = Port.open({:spawn_executable, port_path},
