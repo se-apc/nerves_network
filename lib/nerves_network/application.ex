@@ -9,8 +9,6 @@ defmodule Nerves.Network.Application do
     children = [
       supervisor(Registry, [:duplicate, Nerves.Udhcpc], id: Nerves.Udhcpc),
       supervisor(Registry, [:duplicate, Nerves.Dhclient], id: Nerves.Dhclient),
-      #supervisor(Nerves.Network.Dhclient, [:duplicate, Nerves.Dhclient]),
-      #supervisor(Nerves.Network.Dhclient, ["eth0"]),
       worker(Nerves.Network.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.Network.Resolvconf]]),
       supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]]),
       worker(Nerves.Network.Config, []),
