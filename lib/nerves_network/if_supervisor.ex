@@ -48,7 +48,6 @@ defmodule Nerves.Network.IFSupervisor do
         }
 
       Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
-
       result
     else
       Logger.debug ":error, :already_added"
