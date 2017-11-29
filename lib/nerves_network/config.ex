@@ -6,8 +6,12 @@ defmodule Nerves.Network.Config  do
   alias SystemRegistry, as: SR
   alias Nerves.Network.IFSupervisor
 
+  use Nerves.Network.Debug
+
   @scope [:config, :network_interface]
   @priority :nerves_network
+
+  @debug? false
 
     def start_link do
       GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -38,6 +42,8 @@ defmodule Nerves.Network.Config  do
 
 
   def init([]) do
+    debug_init(@debug?)
+
     Logger.debug fn -> "#{__MODULE__}: init([])" end
 
     SR.register
