@@ -14,7 +14,7 @@ config :nerves_network, :default,
   eth0: [
     ipv4_address_method: :dhcp,
     ipv6_dhcp: :stateful
-  ],
+  ]
 
 #The prefixes for the lease and pid file. The file anmes will be appended witht the inetrface's name
 #i.e. dhclient6.leases.eth0
