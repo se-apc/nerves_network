@@ -34,11 +34,9 @@ defmodule Nerves.Network.Debug do
             Logger.disable(self())
           end
 
-          def debug_init(debug \\ false) do
-            unless debug do
-              debug_disable()
-            end
-          end
+          def debug_init(false), do: debug_disable()
+          def debug_init(true), do: debug_enable()
+          def debug_init(), do: debug_init(false)
       end #quote
 
   end #macro __using__

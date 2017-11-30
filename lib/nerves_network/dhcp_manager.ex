@@ -38,15 +38,13 @@ defmodule Nerves.Network.DHCPManager do
   #
   #
   # end
-  
+
   #  def handle_call(a, b, c) do
     #  Logger.debug fn -> "#{__MODULE__}: handle_call: (a=#{inspect a}, b=#{inspect b}, c=#{inspect c})" end
     #  end
 
   def init({ifname, settings}) do
-    unless @debug? do
-      Logger.disable(self())
-    end
+    debug_init(@debug?)
 
     # Register for nerves_network_interface and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
