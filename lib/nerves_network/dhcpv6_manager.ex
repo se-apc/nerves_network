@@ -1,6 +1,4 @@
-defmodule Nerves.Network.DHCPManager do
-
-  @debug? false
+defmodule Nerves.Network.DHCPv6Manager do
   use GenServer
   require Logger
   import Nerves.Network.Utils
@@ -19,7 +17,7 @@ defmodule Nerves.Network.DHCPManager do
             dhcp_retry_timer: nil
 
   def start_link(ifname, settings, opts \\ []) do
-    Logger.debug fn -> "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
+    Logger.debug fn -> "DHCPv6Manager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
@@ -39,19 +37,18 @@ defmodule Nerves.Network.DHCPManager do
   #
   # end
 
-  #  def handle_call(a, b, c) do
-    #  Logger.debug fn -> "#{__MODULE__}: handle_call: (a=#{inspect a}, b=#{inspect b}, c=#{inspect c})" end
-    #  end
-
   def init({ifname, settings}) do
-    debug_init(@debug?)
+    unless @debug? do
+      Logger.disable(self())
+    end
 
-    # Register for nerves_network_interface and udhcpc events
+    # Register for nerves_network_interface and dhclient events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
-    {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
+    {:ok, _} = Registry.register(Nerves.Dhclient, ifname, [])
 
-    state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
-    Logger.debug fn -> "#{__MODULE__}: initialising.... state: #{inspect state}" end
+    state = %Nerves.Network.DHCPv6Manager{settings: settings, ifname: ifname}
+    Logger.debug fn -> "DHCPv6Manager initialising.... state: #{inspect state}" end
+    Logger.debug fn -> "#{__MODULE__}:   settings: #{inspect settings}" end
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -62,22 +59,23 @@ defmodule Nerves.Network.DHCPManager do
         state
       end
 
+    Logger.debug fn -> "DHCPv6Manager initialising.... state: #{inspect state}" end
     {:ok, state}
   end
 
   def handle_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifadded"
+    Logger.debug fn -> "DHCPv6Manager.EventHandler(#{ifname}) ifadded" end
     :ifadded
   end
   # :ifmoved occurs on systems that assign stable names to removable
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
   def handle_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifadded (moved)"
+    Logger.debug "DHCPv6Manager.EventHandler(#{ifname}) ifadded (moved)"
     :ifadded
   end
   def handle_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifremoved"
+    Logger.debug fn -> "DHCPv6Manager.EventHandler(#{ifname}) ifremoved" end
     :ifremoved
   end
 
@@ -85,11 +83,11 @@ defmodule Nerves.Network.DHCPManager do
   # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
   # :is_lower_up reports whether the interface as associated with an AP
   def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
-    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifup"
+    Logger.debug "DHCPv6Manager.EventHandler(#{ifname}) ifup"
     :ifup
   end
   def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
-    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifdown"
+    Logger.debug "DHCPv6Manager.EventHandler(#{ifname}) ifdown"
     :ifdown
   end
 
@@ -98,7 +96,7 @@ defmodule Nerves.Network.DHCPManager do
 
 
   def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
+    Logger.debug "DHCPv6Manager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
     :noop
   end
 
@@ -106,12 +104,12 @@ defmodule Nerves.Network.DHCPManager do
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.debug "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
+    Logger.debug fn -> "DHCPv6Manager(#{s.ifname}, #{s.context}) got event #{inspect event}" end
     {:noreply, s}
   end
 
-  def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.debug "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
+  def handle_info({Nerves.Dhclient, event, info}, %{ifname: ifname} = s) do
+    Logger.debug "DHCPv6Manager.EventHandler(#{s.ifname}) dhclient #{inspect event}"
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
@@ -123,13 +121,13 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   def handle_info(event, s) do
-    Logger.debug "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
+    Logger.debug fn -> "DHCPv6Manager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}" end
     {:noreply, s}
   end
 
   ## State machine implementation
   defp goto_context(state, newcontext) do
-    %Nerves.Network.DHCPManager{state | context: newcontext}
+    %Nerves.Network.DHCPv6Manager{state | context: newcontext}
   end
 
   defp consume(_, :noop, state), do: state
@@ -169,38 +167,38 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(:down, :ifadded, state), do: state
   defp consume(:down, :ifup, state) do
     state
-      |> start_udhcpc
-      |> goto_context(:dhcp)
+      |> start_dhclient
+      |> goto_context(:dhcpv6)
   end
   defp consume(:down, :ifdown, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
   end
   defp consume(:down, :ifremoved, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
       |> goto_context(:removed)
   end
 
-  ## Context: :dhcp
-  defp consume(:dhcp, :ifup, state), do: state
-  defp consume(:dhcp, {:deconfig, _info}, state), do: state
-  defp consume(:dhcp, {:bound, info}, state) do
+  ## Context: :dhcpv6
+  defp consume(:dhcpv6, :ifup, state), do: state
+  defp consume(:dhcpv6, {:deconfig, _info}, state), do: state
+  defp consume(:dhcpv6, {:bound, info}, state) do
     state
       |> configure(info)
       |> goto_context(:up)
   end
-  defp consume(:dhcp, {:leasefail, _info}, state) do
+  defp consume(:dhcpv6, {:leasefail, _info}, state) do
     dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
     %{state | dhcp_retry_timer: dhcp_retry_timer}
-      |> stop_udhcpc
+      |> stop_dhclient
       |> start_link_local
       |> goto_context(:up)
 
   end
-  defp consume(:dhcp, :ifdown, state) do
+  defp consume(:dhcpv6, :ifdown, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
       |> goto_context(:down)
   end
 
@@ -208,12 +206,12 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(:up, :ifup, state), do: state
   defp consume(:up, :dhcp_retry, state) do
     state
-      |> start_udhcpc
-      |> goto_context(:dhcp)
+      |> start_dhclient
+      |> goto_context(:dhcpv6)
   end
   defp consume(:up, :ifdown, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
       |> deconfigure
       |> goto_context(:down)
   end
@@ -225,18 +223,18 @@ defmodule Nerves.Network.DHCPManager do
     state
   end
 
-  defp stop_udhcpc(state) do
+  defp stop_dhclient(state) do
     if is_pid(state.dhcp_pid) do
-      Nerves.Network.Udhcpc.stop(state.dhcp_pid)
-      %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
+      Nerves.Network.Dhclient.stop(state.dhcp_pid)
+      %Nerves.Network.DHCPv6Manager{state | dhcp_pid: nil}
     else
       state
     end
   end
-  defp start_udhcpc(state) do
-    state = stop_udhcpc(state)
-    {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
-    %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
+  defp start_dhclient(state) do
+    state = stop_dhclient(state)
+    {:ok, pid} = Nerves.Network.Dhclient.start_link({state.ifname, state.settings[:ipv6_dhcp]})
+    %Nerves.Network.DHCPv6Manager{state | dhcp_pid: pid}
   end
 
   defp start_link_local(state) do
@@ -258,5 +256,4 @@ defmodule Nerves.Network.DHCPManager do
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
-
 end

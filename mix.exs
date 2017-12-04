@@ -40,9 +40,11 @@ defmodule Nerves.Network.Mixfile do
   defp deps do
     [
       {:system_registry, "~> 0.4"},
-      {:nerves_network_interface, "~> 0.4.0"},
+      #      {:nerves_network_interface, "~> 0.4.0"},
+      {:nerves_network_interface, [env: :prod, git: "https://github.schneider-electric.com/elixir4ecp/nerves_network_interface.git", branch: "master", override: true]},
       {:nerves_wpa_supplicant, "~> 0.3.0"},
-      {:elixir_make, "~> 0.4", runtime: false},
+      #      {:elixir_make, "~> 0.4", runtime: false},
+      {:elixir_make, [env: :prod, git: "https://github.schneider-electric.com/elixir4ecp/elixir_make.git", override: true, runtime: false]},
       {:ex_doc, "~> 0.11", only: :dev}]
   end
 end

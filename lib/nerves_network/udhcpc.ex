@@ -26,6 +26,7 @@ defmodule Nerves.Network.Udhcpc do
   wlan0).
   """
   def start_link(ifname) do
+    Logger.debug fn -> "#{__MODULE__}: Starting Udhcpc for #{inspect ifname}" end
     GenServer.start_link(__MODULE__, ifname)
   end
 
