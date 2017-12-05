@@ -155,9 +155,19 @@ defmodule Nerves.Network.Dhclient do
     Utils.notify(Nerves.Dhclient, state.ifname, :deconfig, %{ifname: ifname})
     {:noreply, state}
   end
+
+  defp notify_dhclient(ifname, event, config, state) do
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(args, state) do
+    IO.puts "+++++ #{__MODULE__} handle_dhclient args = #{inspect args} state = #{inspect state}"
+    {:noreply, state}
+  end
+
   defp handle_dhclient(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
-    Logger.debug "dhclient: bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
+    Logger.debug fn -> "dhclient: bound #{ifname}: IP=#{ip}, subnet = #{inspect subnet} dns=#{inspect dns} broadcast = #{inspect broadcast}, router = #{inspect router}, domain = #{inspect domain}" end
     Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
