@@ -40,7 +40,6 @@ defmodule Nerves.Network.Config  do
       GenServer.call(__MODULE__, {:drop, iface, priority})
     end
 
-
   def init([]) do
     debug_init(@debug?)
 
@@ -52,12 +51,16 @@ defmodule Nerves.Network.Config  do
 
     Logger.debug fn -> "#{__MODULE__}: defaults = #{inspect defaults}" end
 
-    Enum.each(defaults, fn({iface, config}) ->
-      iface
-      |> to_string()
-      |> put(config, :default)
-    end)
+    Process.send_after(self(), {:setup_default_ifaces, defaults}, 0)
     {:ok, %{}}
+  end
+
+  def handle_info({:setup_default_ifaces, defaults}, state) do
+    Enum.each(defaults, fn({iface, config}) ->
+      scope(iface)
+         |> SR.update(config, priority: :default)
+    end)
+    {:noreply, state}
   end
 
   def handle_info({:system_registry, :global, registry}, s) do
