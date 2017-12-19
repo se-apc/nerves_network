@@ -206,17 +206,29 @@ defmodule Nerves.Network.DHCPManager do
 
   ## Context: :up
   defp consume(:up, :ifup, state), do: state
+
   defp consume(:up, :dhcp_retry, state) do
     state
       |> start_udhcpc
       |> goto_context(:dhcp)
   end
+
   defp consume(:up, :ifdown, state) do
     state
       |> stop_udhcpc
       |> deconfigure
       |> goto_context(:down)
   end
+
+  defp consume(:up, {:renew, info}, state) do
+    state
+    |> configure(info)
+
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    state
+  end
+
   defp consume(:up, {:leasefail, _info}, state), do: state
 
   # Catch-all handler for consume
