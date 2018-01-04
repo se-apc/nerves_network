@@ -165,26 +165,21 @@ defmodule Nerves.Network.Dhclient do
     {:noreply, state}
   end
 
-  defp handle_dhclient(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
+  #argv[1],
+  #          getenv_nonull("interface"),
+  #          ip6_addr, /* in DA60 format */
+  #          getenv_nonull("new_dhcp6_domain_search"),
+  #          getenv_nonull("new_dhcp6_name_servers")
+  defp handle_dhclient(["bound", ifname, ip, domain_search, dns, _message], state) do
     dnslist = String.split(dns, " ")
-    Logger.debug fn -> "dhclient: bound #{ifname}: IP=#{ip}, subnet = #{inspect subnet} dns=#{inspect dns} broadcast = #{inspect broadcast}, router = #{inspect router}, domain = #{inspect domain}" end
-    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
+    Logger.debug fn -> "dhclient: bound #{ifname}: IPv6 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv6_address: ip, domain_search: domain_search, nameservers: dnslist})
     {:noreply, state}
   end
-  defp handle_dhclient(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
+  defp handle_dhclient(["renew", ifname, ip, domain_search, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.debug "dhclient: renew #{ifname}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
-    {:noreply, state}
-  end
-  defp handle_dhclient(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
-    Logger.debug "dhclient: #{ifname}: leasefail #{message}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :leasefail, %{ifname: ifname, message: message})
-    {:noreply, state}
-  end
-  defp handle_dhclient(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
-    Logger.debug "dhclient: #{ifname}: NAK #{message}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :nak, %{ifname: ifname, message: message})
+    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv6_address: ip, domain_search: domain_search, nameservers: dnslist})
     {:noreply, state}
   end
   defp handle_dhclient(_something_else, state) do

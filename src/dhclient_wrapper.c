@@ -25,6 +25,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <arpa/inet.h>
+
 #define DEBUG
 #ifdef DEBUG
 //#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
@@ -211,30 +213,46 @@ static void run_dhclient(const int argc, char *argv[])
 
 }
 
+static const char * restrict getenv_nonull(const char * restrict key)
+{
+    const char * restrict result = getenv(key);
+    return result != NULL ? result : "";
+}
+
+/* The Dhclient's environment variables input to the script:
+ * interface
+ * new_ip6_address, ip6_prefixlen - if no new_ip6_prefix avaial
+ * new_ip6_prefix
+ * new_dhcp6_domain_search
+ * new_dhcp6_name_servers
+ */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
+    char ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
+
+    char * new_ip6_prefix    = getenv("new_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
+    char * new_ip6_address   = getenv("new_ip6_address");
+    char * new_ip6_prefixlen = getenv("new_ip6_prefixlen");
+
     (void) argc; // Guaranteed to be >=2
     (void) argv;
 
-    /* If the user tells dhclient to call this program as the script
-       (-isf script option), format and print the udhcpc result nicely. */
-       
-    /* TODO: Implement return to erlang - perhaps invoking erlang callbac function */
-    printf("[%s %d]: Dhcclient script callback..\r\n", __FILE__, __LINE__);
+    if (new_ip6_prefix != NULL) {
+      strncpy(ip6_addr, new_ip6_prefix, INET6_ADDRSTRLEN);
+    } else if((new_ip6_address != NULL) && (new_ip6_prefixlen != NULL)) {
+        snprintf(ip6_addr, INET6_ADDRSTRLEN, "%s/%s", new_ip6_address, new_ip6_prefixlen);
+    }
 
-#if 0
-    printf("%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+    /* If the user tells dhclient to call this program as the script
+       (-isf script option), format and print the dhclient result nicely. */
+
+    printf("%s,%s,%s,%s,%s\n",
            argv[1],
             getenv_nonull("interface"),
-            getenv_nonull("ip"),
-            getenv_nonull("broadcast"),
-            getenv_nonull("subnet"),
-            getenv_nonull("router"),
-            getenv_nonull("domain"),
-            getenv_nonull("dns"),
-            getenv_nonull("message")
+            ip6_addr, /* in DA60 format */
+            getenv_nonull("new_dhcp6_domain_search"),
+            getenv_nonull("new_dhcp6_name_servers")
             );
-#endif
 }
 
 int main(int argc, char *argv[])
