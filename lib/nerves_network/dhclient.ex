@@ -17,6 +17,8 @@ defmodule Nerves.Network.Dhclient do
   require Logger
   alias Nerves.Network.Utils
 
+  @debug false
+
   @renew     1
   @release   2
   @terminate 3
@@ -96,6 +98,10 @@ defmodule Nerves.Network.Dhclient do
   end
 
   def init(args) do
+    unless @debug? do
+      Logger.disable(self())
+    end
+
     {ifname, mode} = args
     Logger.info fn -> "#{__MODULE__}: Starting Dhclient wrapper for ifname: #{inspect ifname} mode: #{inspect mode}" end
 
@@ -163,7 +169,7 @@ defmodule Nerves.Network.Dhclient do
 
   #Handling informational debug prints from the dhclient
   defp handle_dhclient([message], state) do
-    #Logger.debug fn -> "#{__MODULE__} handle_dhclient args = #{inspect message} state = #{inspect state}" end
+    Logger.debug fn -> "#{__MODULE__} handle_dhclient args = #{inspect message} state = #{inspect state}" end
     {:noreply, state}
   end
 

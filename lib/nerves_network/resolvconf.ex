@@ -1,5 +1,6 @@
 defmodule Nerves.Network.Resolvconf do
   use GenServer
+  use Nerves.Network.Debug
   require Logger
 
   @moduledoc """
@@ -75,6 +76,10 @@ defmodule Nerves.Network.Resolvconf do
   end
 
   def init(filename) do
+    unless @debug? do
+      Logger.disable(self())
+    end
+
     state = %{filename: filename, ifmap: %{}}
     write_resolvconf(state)
     {:ok, state}
