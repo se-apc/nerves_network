@@ -257,12 +257,6 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-#if 0
-    if (argc < 2) {
-        errx(EXIT_FAILURE, "Pass at least one parameter. For example, \"dhclient\" to start the dhclient.");
-    }
-#endif
-
     if ((argc >= 2) && (strncmp(argv[1], "dhclient", strlen("dhclient")) == 0)) {
         run_dhclient(argc - 1, &argv[1]);
     } else {
