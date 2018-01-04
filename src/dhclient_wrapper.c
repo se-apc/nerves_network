@@ -176,8 +176,6 @@ static void run_dhclient(const int argc, char *argv[])
         .sa_flags   = 0,
     };
 
-    fprintf(stderr, "[%s %d]: %s\r\n", __FILE__, __LINE__, __FUNCTION__);
-
     /* Make sure the udhcpc has ian effective root permission to run before going farther */
     force_identity();
 
@@ -213,13 +211,14 @@ static void run_dhclient(const int argc, char *argv[])
 
 }
 
-static const char * restrict getenv_nonull(const char * restrict key)
+static const char * getenv_nonull(const char * restrict key)
 {
     const char * restrict result = getenv(key);
     return result != NULL ? result : "";
 }
 
 /* The Dhclient's environment variables input to the script:
+ * reason
  * interface
  * new_ip6_address, ip6_prefixlen - if no new_ip6_prefix avaial
  * new_ip6_prefix
@@ -246,8 +245,9 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
     /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    printf("%s,%s,%s,%s,%s\n",
-           argv[1],
+    printf("%s,%s,%s,%s,%s,%s\n",
+           argv[0],
+            getenv_nonull("reason"),
             getenv_nonull("interface"),
             ip6_addr, /* in DA60 format */
             getenv_nonull("new_dhcp6_domain_search"),
@@ -257,12 +257,13 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    fprintf(stderr, "[%s %d]: %s\r\n", __FILE__, __LINE__, __FUNCTION__);
+#if 0
     if (argc < 2) {
         errx(EXIT_FAILURE, "Pass at least one parameter. For example, \"dhclient\" to start the dhclient.");
     }
+#endif
 
-    if (strncmp(argv[1], "dhclient", strlen("dhclient")) == 0) {
+    if ((argc >= 2) && (strncmp(argv[1], "dhclient", strlen("dhclient")) == 0)) {
         run_dhclient(argc - 1, &argv[1]);
     } else {
         process_dhclient_script_callback(argc, argv);
