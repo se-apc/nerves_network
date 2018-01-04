@@ -109,7 +109,9 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
 
+  defp domain_text({_ifname, %{:domain => domain, :ipv6_domain => ipv6_domain}}) when domain != "" or ipv6_domain != "", do: "search #{domain} #{ipv6_domain}\n"
   defp domain_text({_ifname, %{:domain => domain}}) when domain != "", do: "search #{domain}\n"
+  defp domain_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text(_), do: ""
   defp nameserver_text({_ifname, %{:nameservers => nslist}}) do
     for ns <- nslist, do: "nameserver #{ns}\n"
@@ -131,9 +133,8 @@ defmodule Nerves.Network.Resolvconf do
     nameservers = Enum.map(state.ifmap, &nameserver_text/1)
 
     #IPv6 part
-    domains6     = Enum.map(state.ifmap, &domain6_text/1)
     nameservers6 = Enum.map(state.ifmap, &nameserver6_text/1)
 
-    File.write!(state.filename, domains ++ nameservers ++ domains6 ++ nameservers6)
+    File.write!(state.filename, domains ++ nameservers ++ nameservers6)
   end
 end
