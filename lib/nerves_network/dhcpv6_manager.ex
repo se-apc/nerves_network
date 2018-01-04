@@ -5,7 +5,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   use Nerves.Network.Debug
 
   @moduledoc false
-  @debug?    false
+  @debug?    true
 
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
@@ -92,7 +92,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   # # DHCP events
-  # # :bound, :renew, :deconfig, :nak
+  # # :bound, :renew, :rebind, :nak
 
 
   def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
@@ -101,6 +101,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
+    Logger.debug fn -> "#{__MODULE__} handle_info: ifstate = #{inspect ifstate}" end
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
@@ -108,15 +109,11 @@ defmodule Nerves.Network.DHCPv6Manager do
     {:noreply, s}
   end
 
+  #  info: %{domain_search: "ipv6.doman.name", ifname: "eth1", ipv6_address: "666::16/64", nameservers: ["fec0:0:0:1::7"]}
   def handle_info({Nerves.Dhclient, event, info}, %{ifname: ifname} = s) do
-    Logger.debug "DHCPv6Manager.EventHandler(#{s.ifname}) dhclient #{inspect event}"
+    Logger.debug fn -> "DHCPv6Manager.EventHandler(#{s.ifname}) event: #{inspect event}; info: #{inspect info}" end
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
-    {:noreply, s}
-  end
-
-  def handle_info(:dhcp_retry, s) do
-    s = consume(s.context, :dhcp_retry, s)
     {:noreply, s}
   end
 
@@ -183,11 +180,15 @@ defmodule Nerves.Network.DHCPv6Manager do
   ## Context: :dhcpv6
   defp consume(:dhcpv6, :ifup, state), do: state
   defp consume(:dhcpv6, {:deconfig, _info}, state), do: state
+
   defp consume(:dhcpv6, {:bound, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
     state
       |> configure(info)
       |> goto_context(:up)
   end
+
+
   defp consume(:dhcpv6, {:leasefail, _info}, state) do
     dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
     %{state | dhcp_retry_timer: dhcp_retry_timer}
@@ -217,9 +218,29 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
   defp consume(:up, {:leasefail, _info}, state), do: state
 
+  defp consume(:up, {:bound, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :boundinfo: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+  end
+
+  defp consume(:up, {:renew, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :renew info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:rebind, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :rebindinfo: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
   # Catch-all handler for consume
   defp consume(context, event, state) do
-    Logger.warn "Unhandled event #{event} for context #{context} in consume/3."
+    Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
     state
   end
 
@@ -241,13 +262,25 @@ defmodule Nerves.Network.DHCPv6Manager do
     {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
     ip = generate_link_local(ifsettings.mac_address)
     scope(state.ifname)
-    |> SystemRegistry.update(%{ipv4_address: ip})
-    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
+    |> SystemRegistry.update(%{ipv6_address: ip})
+    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv6_address: ip])
+    state
+  end
+
+  defp setup_iface(state, info) do
+    case Nerves.NetworkInterface.setup(state.ifname, info) do
+      :ok -> :ok
+      {:error, :eexist} -> :ok
+    end
+  end
+
+  defp configure(:no_resolv_conf, state, info) do
+    :ok = setup_iface(state, info)
     state
   end
 
   defp configure(state, info) do
-    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
+    :ok = setup_iface(state, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
     state
   end

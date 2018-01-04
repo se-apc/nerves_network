@@ -1,5 +1,6 @@
 defmodule Nerves.Network.Resolvconf do
   use GenServer
+  require Logger
 
   @moduledoc """
   This module manages the contents of "/etc/resolv.conf". This file is used
@@ -90,7 +91,10 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
   def handle_call({:setup, ifname, ifentry}, _from, state) do
-    state = %{state | ifmap: Map.put(state.ifmap, ifname, ifentry)}
+    new_ifentry = state.ifmap
+                    |> Map.get(ifname, %{})
+                    |> Map.merge(ifentry)
+    state = %{state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
     write_resolvconf(state)
     {:reply, :ok, state}
   end
@@ -112,9 +116,24 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver_text(_), do: ""
 
+  defp domain6_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
+  defp domain6_text(_), do: ""
+  defp nameserver6_text({_ifname, %{:ipv6_nameservers => nslist}}) do
+    for ns <- nslist, do: "nameserver #{ns}\n"
+  end
+  defp nameserver6_text(_), do: ""
+
   defp write_resolvconf(state) do
-    domains = Enum.map(state.ifmap, &domain_text/1)
+    Logger.debug fn -> "#{__MODULE__}: write_resolvconf state = #{inspect state}" end
+
+    #IPv4 part
+    domains     = Enum.map(state.ifmap, &domain_text/1)
     nameservers = Enum.map(state.ifmap, &nameserver_text/1)
-    File.write!(state.filename, domains ++ nameservers)
+
+    #IPv6 part
+    domains6     = Enum.map(state.ifmap, &domain6_text/1)
+    nameservers6 = Enum.map(state.ifmap, &nameserver6_text/1)
+
+    File.write!(state.filename, domains ++ nameservers ++ domains6 ++ nameservers6)
   end
 end
