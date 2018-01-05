@@ -1,5 +1,7 @@
 defmodule Nerves.Network.Resolvconf do
   use GenServer
+  use Nerves.Network.Debug
+  require Logger
 
   @moduledoc """
   This module manages the contents of "/etc/resolv.conf". This file is used
@@ -74,6 +76,10 @@ defmodule Nerves.Network.Resolvconf do
   end
 
   def init(filename) do
+    unless @debug? do
+      Logger.disable(self())
+    end
+
     state = %{filename: filename, ifmap: %{}}
     write_resolvconf(state)
     {:ok, state}
@@ -90,7 +96,10 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
   def handle_call({:setup, ifname, ifentry}, _from, state) do
-    state = %{state | ifmap: Map.put(state.ifmap, ifname, ifentry)}
+    new_ifentry = state.ifmap
+                    |> Map.get(ifname, %{})
+                    |> Map.merge(ifentry)
+    state = %{state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
     write_resolvconf(state)
     {:reply, :ok, state}
   end
@@ -105,16 +114,32 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
 
+  defp domain_text({_ifname, %{:domain => domain, :ipv6_domain => ipv6_domain}}) when domain != "" or ipv6_domain != "", do: "search #{domain} #{ipv6_domain}\n"
   defp domain_text({_ifname, %{:domain => domain}}) when domain != "", do: "search #{domain}\n"
+  defp domain_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text(_), do: ""
   defp nameserver_text({_ifname, %{:nameservers => nslist}}) do
     for ns <- nslist, do: "nameserver #{ns}\n"
   end
   defp nameserver_text(_), do: ""
 
+  defp domain6_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
+  defp domain6_text(_), do: ""
+  defp nameserver6_text({_ifname, %{:ipv6_nameservers => nslist}}) do
+    for ns <- nslist, do: "nameserver #{ns}\n"
+  end
+  defp nameserver6_text(_), do: ""
+
   defp write_resolvconf(state) do
-    domains = Enum.map(state.ifmap, &domain_text/1)
+    Logger.debug fn -> "#{__MODULE__}: write_resolvconf state = #{inspect state}" end
+
+    #IPv4 part
+    domains     = Enum.map(state.ifmap, &domain_text/1)
     nameservers = Enum.map(state.ifmap, &nameserver_text/1)
-    File.write!(state.filename, domains ++ nameservers)
+
+    #IPv6 part
+    nameservers6 = Enum.map(state.ifmap, &nameserver6_text/1)
+
+    File.write!(state.filename, domains ++ nameservers ++ nameservers6)
   end
 end

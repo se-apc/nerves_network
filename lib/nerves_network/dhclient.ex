@@ -17,6 +17,8 @@ defmodule Nerves.Network.Dhclient do
   require Logger
   alias Nerves.Network.Utils
 
+  @debug false
+
   @renew     1
   @release   2
   @terminate 3
@@ -96,6 +98,10 @@ defmodule Nerves.Network.Dhclient do
   end
 
   def init(args) do
+    unless @debug? do
+      Logger.disable(self())
+    end
+
     {ifname, mode} = args
     Logger.info fn -> "#{__MODULE__}: Starting Dhclient wrapper for ifname: #{inspect ifname} mode: #{inspect mode}" end
 
@@ -105,7 +111,8 @@ defmodule Nerves.Network.Dhclient do
     args = ["dhclient",
             "-6", #IPv6 
             "-sf", port_path, #The script to be invoked at the lease time
-            "-d"] #force to run in foreground
+            "-q", "-d"
+           ]
             ++ dhclient_mode_args(mode)
             ++ dhclient_runtime(ifname)
             ++ [ifname]
@@ -160,31 +167,31 @@ defmodule Nerves.Network.Dhclient do
     {:noreply, state}
   end
 
-  defp handle_dhclient(args, state) do
-    IO.puts "+++++ #{__MODULE__} handle_dhclient args = #{inspect args} state = #{inspect state}"
+  #Handling informational debug prints from the dhclient
+  defp handle_dhclient([message], state) do
+    Logger.debug fn -> "#{__MODULE__} handle_dhclient args = #{inspect message} state = #{inspect state}" end
     {:noreply, state}
   end
 
-  defp handle_dhclient(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
+  #TODO: scribe PREINIT6 handler
+  #["/home/src/agilis_mqtt_ipv6/nerves_network/_build/dev/lib/nerves_network/priv/dhclient_wrapper", "PREINIT6", "eth1", "", "", ""] state = %{ifname: "eth1", port: #Port<0.5567>}
+
+  defp handle_dhclient([_originator, "REBIND6", ifname, ip, domain_search, dns], state) do
     dnslist = String.split(dns, " ")
-    Logger.debug fn -> "dhclient: bound #{ifname}: IP=#{ip}, subnet = #{inspect subnet} dns=#{inspect dns} broadcast = #{inspect broadcast}, router = #{inspect router}, domain = #{inspect domain}" end
-    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
+    Logger.debug fn -> "dhclient: rebind #{ifname}: IPv6 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :rebind , %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist})
     {:noreply, state}
   end
-  defp handle_dhclient(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
+  defp handle_dhclient([_originator, "BOUND6", ifname, ip, domain_search, dns], state) do
+    dnslist = String.split(dns, " ")
+    Logger.debug fn -> "dhclient: bound #{ifname}: IPv6 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist})
+    {:noreply, state}
+  end
+  defp handle_dhclient([_originator, "RENEW6", ifname, ip, domain_search, dns], state) do
     dnslist = String.split(dns, " ")
     Logger.debug "dhclient: renew #{ifname}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
-    {:noreply, state}
-  end
-  defp handle_dhclient(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
-    Logger.debug "dhclient: #{ifname}: leasefail #{message}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :leasefail, %{ifname: ifname, message: message})
-    {:noreply, state}
-  end
-  defp handle_dhclient(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
-    Logger.debug "dhclient: #{ifname}: NAK #{message}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :nak, %{ifname: ifname, message: message})
+    Utils.notify(Nerves.Dhclient, state.ifname, :renew, %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist})
     {:noreply, state}
   end
   defp handle_dhclient(_something_else, state) do
