@@ -5,7 +5,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   use Nerves.Network.Debug
 
   @moduledoc false
-  @debug?    false
+  @debug?    true
 
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
@@ -219,7 +219,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   defp consume(:up, {:leasefail, _info}, state), do: state
 
   defp consume(:up, {:bound, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :boundinfo: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
   end
@@ -232,7 +232,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   defp consume(:up, {:rebind, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :rebindinfo: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume :rebind info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
@@ -271,6 +271,9 @@ defmodule Nerves.Network.DHCPv6Manager do
     case Nerves.NetworkInterface.setup(state.ifname, info) do
       :ok -> :ok
       {:error, :eexist} -> :ok
+        #It may very often happen that at the renew time we would receive the lease of the very same IP address...
+        #In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
+        #It definitely is non-critical situation and actually confirms that we do not have to take any action.
     end
   end
 
