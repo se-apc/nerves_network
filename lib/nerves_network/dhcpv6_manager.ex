@@ -237,6 +237,33 @@ defmodule Nerves.Network.DHCPv6Manager do
       |> configure(state, info)
       |> goto_context(:up)
   end
+  defp consume(:up, {:rebind, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :rebind info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:release, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :release info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:expire, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :expire info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:stop, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :stop info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
 
   # Catch-all handler for consume
   defp consume(context, event, state) do
@@ -277,7 +304,20 @@ defmodule Nerves.Network.DHCPv6Manager do
     end
   end
 
+  defp remove_old_ip(state, info) do
+    old_ip = info[:"old_ipv6_address"] || ""
+    new_ip = info[:"ipv6_address"] || ""
+
+    if old_ip == "" or new_ip == old_ip do
+      :ok
+    else
+      Logger.debug fn -> "Removing ipv6 address = #{inspect old_ip} from #{inspect state.ifname}" end
+      Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv6_address" => old_ip})
+    end
+  end
+
   defp configure(:no_resolv_conf, state, info) do
+    remove_old_ip(state, info)
     :ok = setup_iface(state, info)
     state
   end

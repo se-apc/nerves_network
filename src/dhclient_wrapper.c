@@ -217,6 +217,17 @@ static const char * getenv_nonull(const char * restrict key)
     return result != NULL ? result : "";
 }
 
+static char *get_ip6_addr(char * restrict dest, char * restrict ip6_prefix, char * restrict ip6_address, char * restrict ip6_prefixlen)
+{
+    if (ip6_prefix != NULL) {
+      strncpy(dest, ip6_prefix, INET6_ADDRSTRLEN);
+    } else if((ip6_address != NULL) && (ip6_prefixlen != NULL)) {
+        snprintf(dest, INET6_ADDRSTRLEN, "%s/%s", ip6_address, ip6_prefixlen);
+    }
+
+    return dest; /* in DA60 format */
+}
+
 /* The Dhclient's environment variables input to the script:
  * reason
  * interface
@@ -224,34 +235,43 @@ static const char * getenv_nonull(const char * restrict key)
  * new_ip6_prefix
  * new_dhcp6_domain_search
  * new_dhcp6_name_servers
+ * old_ip6_address - for release,expire and stop
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
-    char ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
+    char new_ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
+    char old_ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
 
     char * new_ip6_prefix    = getenv("new_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
     char * new_ip6_address   = getenv("new_ip6_address");
     char * new_ip6_prefixlen = getenv("new_ip6_prefixlen");
 
+    char * old_ip6_prefix    = getenv("old_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
+    char * old_ip6_address   = getenv("old_ip6_address");
+    char * old_ip6_prefixlen = getenv("old_ip6_prefixlen");
+
     (void) argc; // Guaranteed to be >=2
     (void) argv;
 
+#if 0
     if (new_ip6_prefix != NULL) {
-      strncpy(ip6_addr, new_ip6_prefix, INET6_ADDRSTRLEN);
+      strncpy(new_ip6_addr, new_ip6_prefix, INET6_ADDRSTRLEN);
     } else if((new_ip6_address != NULL) && (new_ip6_prefixlen != NULL)) {
         snprintf(ip6_addr, INET6_ADDRSTRLEN, "%s/%s", new_ip6_address, new_ip6_prefixlen);
     }
+#endif
 
     /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    printf("%s,%s,%s,%s,%s,%s\n",
+    printf("%s,%s,%s,%s,%s,%s,%s\n",
            argv[0],
             getenv_nonull("reason"),
             getenv_nonull("interface"),
-            ip6_addr, /* in DA60 format */
+            get_ip6_addr(&new_ip6_addr[0], new_ip6_prefix, new_ip6_address, new_ip6_prefixlen),
             getenv_nonull("new_dhcp6_domain_search"),
-            getenv_nonull("new_dhcp6_name_servers")
+            getenv_nonull("new_dhcp6_name_servers"),
+            get_ip6_addr(&old_ip6_addr[0], old_ip6_prefix, old_ip6_address, old_ip6_prefixlen)
             );
 }
 
