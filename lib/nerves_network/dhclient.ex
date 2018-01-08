@@ -17,7 +17,7 @@ defmodule Nerves.Network.Dhclient do
   require Logger
   alias Nerves.Network.Utils
 
-  @debug false
+  @debug true
 
   @renew     1
   @release   2
@@ -176,24 +176,41 @@ defmodule Nerves.Network.Dhclient do
   #TODO: scribe PREINIT6 handler
   #["/home/src/agilis_mqtt_ipv6/nerves_network/_build/dev/lib/nerves_network/priv/dhclient_wrapper", "PREINIT6", "eth1", "", "", ""] state = %{ifname: "eth1", port: #Port<0.5567>}
 
-  defp handle_dhclient([_originator, "REBIND6", ifname, ip, domain_search, dns], state) do
+  defp handle_dhclient([_originator, "REBIND6", ifname, ip, domain_search, dns, old_ip], state) do
     dnslist = String.split(dns, " ")
-    Logger.debug fn -> "dhclient: rebind #{ifname}: IPv6 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns}" end
-    Utils.notify(Nerves.Dhclient, state.ifname, :rebind , %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist})
+    Logger.debug fn -> "dhclient: rebind #{ifname}: IPv6 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns} old_ip=#{inspect old_ip}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :rebind , %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist, old_ipv6_address: old_ip})
     {:noreply, state}
   end
-  defp handle_dhclient([_originator, "BOUND6", ifname, ip, domain_search, dns], state) do
+  defp handle_dhclient([_originator, "BOUND6", ifname, ip, domain_search, dns, old_ip], state) do
     dnslist = String.split(dns, " ")
     Logger.debug fn -> "dhclient: bound #{ifname}: IPv6 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns}" end
-    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist})
+    Utils.notify(Nerves.Dhclient, state.ifname, :bound, %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist, old_ipv6_address: old_ip})
     {:noreply, state}
   end
-  defp handle_dhclient([_originator, "RENEW6", ifname, ip, domain_search, dns], state) do
+  defp handle_dhclient([_originator, "RENEW6", ifname, ip, domain_search, dns, old_ip], state) do
     dnslist = String.split(dns, " ")
     Logger.debug "dhclient: renew #{ifname}"
-    Utils.notify(Nerves.Dhclient, state.ifname, :renew, %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist})
+    Utils.notify(Nerves.Dhclient, state.ifname, :renew, %{ifname: ifname, ipv6_address: ip, ipv6_domain: domain_search, ipv6_nameservers: dnslist, old_ipv6_address: old_ip})
     {:noreply, state}
   end
+
+  defp handle_dhclient([_originator, "RELEASE6", ifname, _ip, _domain_search, _dns, old_ip], state) do
+    Logger.debug fn -> "dhclient: release #{ifname}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :renew, %{ifname: ifname, old_ipv6_address: old_ip})
+    {:noreply, state}
+  end
+  defp handle_dhclient([_originator, "EXPIRE6", ifname, _ip, _domain_search, _dns, old_ip], state) do
+    Logger.debug fn -> "dhclient: expire #{ifname}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :expire, %{ifname: ifname, old_ipv6_address: old_ip})
+    {:noreply, state}
+  end
+  defp handle_dhclient([_originator, "STOP6", ifname, _ip, _domain_search, _dns, old_ip], state) do
+    Logger.debug fn -> "dhclient: stop #{ifname}" end
+    Utils.notify(Nerves.Dhclient, state.ifname, :stop, %{ifname: ifname, old_ipv6_address: old_ip})
+    {:noreply, state}
+  end
+
   defp handle_dhclient(_something_else, state) do
     #msg = List.foldl(something_else, "", &<>/2)
     #Logger.debug "dhclient: ignoring unhandled message: #{msg}"
