@@ -253,14 +253,6 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
     (void) argc; // Guaranteed to be >=2
     (void) argv;
 
-#if 0
-    if (new_ip6_prefix != NULL) {
-      strncpy(new_ip6_addr, new_ip6_prefix, INET6_ADDRSTRLEN);
-    } else if((new_ip6_address != NULL) && (new_ip6_prefixlen != NULL)) {
-        snprintf(ip6_addr, INET6_ADDRSTRLEN, "%s/%s", new_ip6_address, new_ip6_prefixlen);
-    }
-#endif
-
     /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
