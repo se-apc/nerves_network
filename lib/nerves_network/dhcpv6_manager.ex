@@ -5,7 +5,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   use Nerves.Network.Debug
 
   @moduledoc false
-  @debug?    true
+  @debug?    false
 
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
