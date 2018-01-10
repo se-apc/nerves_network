@@ -16,8 +16,9 @@ defmodule Nerves.Network.Dhclient do
   use GenServer
   require Logger
   alias Nerves.Network.Utils
+  use Nerves.Network.Debug
 
-  @debug true
+  @debug? true
 
   @renew     1
   @release   2
@@ -98,9 +99,7 @@ defmodule Nerves.Network.Dhclient do
   end
 
   def init(args) do
-    unless @debug? do
-      Logger.disable(self())
-    end
+    debug_init(@debug?)
 
     {ifname, mode} = args
     Logger.info fn -> "#{__MODULE__}: Starting Dhclient wrapper for ifname: #{inspect ifname} mode: #{inspect mode}" end
@@ -145,9 +144,12 @@ defmodule Nerves.Network.Dhclient do
     {:reply, :ok, state}
   end
 
-  # def handle_cast(:stop, state) do
-  #   {:stop, :normal, state}
-  # end
+  #  Nerves.Network.Dhclient.handle_info({#Port<0.6423>, {:exit_status, 0}}, %{ifname: "eth1", port: #Port<0.6423>})
+  def handle_info({pid, {:exit_status, exit_status}}, state) do
+    Logger.debug fn -> "#{__MODULE__}: handle_info pid = #{inspect pid}: exit_status = #{inspect exit_status}, state = #{inspect state}" end
+    "#{__MODULE__} Exit status: #{inspect exit_status} pid: #{inspect pid}"
+    |> handle_dhclient(state)
+  end
 
   def handle_info({_, {:data, {:eol, message}}}, state) do
     message
@@ -174,7 +176,7 @@ defmodule Nerves.Network.Dhclient do
   end
 
   #TODO: scribe PREINIT6 handler
-  #["/home/src/agilis_mqtt_ipv6/nerves_network/_build/dev/lib/nerves_network/priv/dhclient_wrapper", "PREINIT6", "eth1", "", "", ""] state = %{ifname: "eth1", port: #Port<0.5567>}
+  #[".../dhclient_wrapper", "PREINIT6", "eth1", "", "", ""] state = %{ifname: "eth1", port: #Port<0.5567>}
 
   defp handle_dhclient([_originator, "REBIND6", ifname, ip, domain_search, dns, old_ip], state) do
     dnslist = String.split(dns, " ")
