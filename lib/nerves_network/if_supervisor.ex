@@ -4,7 +4,7 @@ defmodule Nerves.Network.IFSupervisor do
   use Nerves.Network.Debug
 
   @moduledoc false
-  @debug?    false
+  @debug?    true
 
   def start_link(options \\ []) do
     {:ok, sup_pid} = Supervisor.start_link(__MODULE__, [], options)
@@ -13,7 +13,7 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   def init([]) do
-      {:ok, {{:one_for_one, 10, 3600}, []}}
+    {:ok, {{:one_for_one, 10, 3600}, []}}
   end
 
   def setup(ifname, settings) when is_atom(ifname) do
@@ -67,19 +67,21 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   defp if_children(children, ifname) do
+    #Logger.debug fn -> "#{__MODULE__}: if_children(children=#{inspect children}, ifname=#{inspect ifname})" end
     Enum.filter(children, fn(child) -> belongs_to_if(child, ifname) end)
   end
 
   def teardown(ifname) do
     Logger.debug fn -> "#{__MODULE__}: teardown(ifname = #{inspect ifname})" end
       #foreach Supervisor.wich_children
-      sup_pid = 
+      sup_pid =
         __MODULE__
         |> Process.whereis()
       Logger.debug fn -> "#{__MODULE__} sup_pid: #{inspect sup_pid}" end
       if sup_pid do
-        children = Supervisor.which_children(sup_pid) 
+        children = Supervisor.which_children(sup_pid)
                     |> if_children(ifname)
+        Logger.debug fn -> "#{__MODULE__} which_children: #{inspect children}" end
         Enum.each children, fn child -> terminate_child(child) end
         Logger.debug fn -> "#{__MODULE__} which_children: #{inspect children}" end
       else
@@ -96,7 +98,13 @@ defmodule Nerves.Network.IFSupervisor do
      end
   end
 
-  defp pname(ifname) do
+  defp pname(ifname) when is_atom(ifname) do
+    ifname
+    |> to_string()
+    |> pname()
+  end
+
+  defp pname(ifname) when is_binary(ifname) do
     String.to_atom("Nerves.Network.Interface." <> ifname)
   end
 
