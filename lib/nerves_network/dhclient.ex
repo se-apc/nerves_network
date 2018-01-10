@@ -18,7 +18,7 @@ defmodule Nerves.Network.Dhclient do
   alias Nerves.Network.Utils
   use Nerves.Network.Debug
 
-  @debug? true
+  @debug? false
 
   @renew     1
   @release   2
