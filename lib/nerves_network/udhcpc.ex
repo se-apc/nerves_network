@@ -16,6 +16,7 @@ defmodule Nerves.Network.Udhcpc do
   use GenServer
   require Logger
   alias Nerves.Network.Utils
+  use Nerves.Network.Debug
 
   @moduledoc """
   This module interacts with `udhcpc` to interact with DHCP servers.
