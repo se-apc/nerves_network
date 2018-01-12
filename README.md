@@ -18,7 +18,7 @@ end
 
 # WiFi Networking
 
-## Installation & Setup
+## Installation and Setup
 
 You'll first need to set the regulatory domain in your `config.exs` to your ISO
 3166-1 alpha-2 country code. In theory this is optional, but you'll get the
@@ -33,6 +33,8 @@ config :nerves_network,
 The easiest way to get up and running is by statically setting your WiFi (and possibly ethernet) configuration in `config.exs`:
 
 ```elixir
+key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
+
 config :nerves_network, :default,
   wlan0: [
     ssid: System.get_env("NERVES_NETWORK_SSID"),

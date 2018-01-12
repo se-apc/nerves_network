@@ -2,10 +2,13 @@ defmodule Nerves.Network.IFSupervisor do
   require Logger
   use Supervisor
   use Nerves.Network.Debug
+  alias Nerves.Network.Types
+  import Nerves.Network.Utils, only: [log_atomized_iface_error: 1]
 
   @moduledoc false
   @debug?    true
 
+  @spec start_link(GenServer.options) :: GenServer.on_start()
   def start_link(options \\ []) do
     {:ok, sup_pid} = Supervisor.start_link(__MODULE__, [], options)
     Logger.debug fn -> "#{__MODULE__}: sup_pid = #{inspect sup_pid}" end
@@ -16,7 +19,9 @@ defmodule Nerves.Network.IFSupervisor do
     {:ok, {{:one_for_one, 10, 3600}, []}}
   end
 
+  @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: Supervisor.on_start_child()
   def setup(ifname, settings) when is_atom(ifname) do
+    log_atomized_iface_error(ifname)
     setup(to_string(ifname), settings)
   end
 
@@ -30,7 +35,7 @@ defmodule Nerves.Network.IFSupervisor do
       manager_modules = managers(if_type(ifname), settings)
       Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
 
-      children = 
+      children =
         for manager <- manager_modules  do
           child_name = pname(ifname, manager)
           worker(manager, [ifname, settings, [name: child_name]], id: {pname(ifname), child_name})
@@ -42,7 +47,7 @@ defmodule Nerves.Network.IFSupervisor do
                         retval = Supervisor.start_child(__MODULE__, child)
                         Logger.debug  fn -> "#{__MODULE__}    retval = #{inspect retval}..." end
                         retval
-                     end #For child <- children 
+                     end #For child <- children
         }
 
       Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
@@ -71,6 +76,7 @@ defmodule Nerves.Network.IFSupervisor do
     Enum.filter(children, fn(child) -> belongs_to_if(child, ifname) end)
   end
 
+  @spec teardown(Types.ifname) :: :ok | {:error, :not_started}
   def teardown(ifname) do
     Logger.debug fn -> "#{__MODULE__}: teardown(ifname = #{inspect ifname})" end
       #foreach Supervisor.wich_children
@@ -89,13 +95,23 @@ defmodule Nerves.Network.IFSupervisor do
       end
   end
 
-  def scan(ifname) do
-     pidname = pname(ifname)
-     if Process.whereis(pidname) do
-       GenServer.call(pidname, :scan, 30_000)
-     else
-       {:error, :not_started}
-     end
+  # Support atom interface names to avoid breaking some existing
+  # code. This is a deprecated use of the API.
+  @spec scan(Types.ifname | atom) :: [String.t] | {:error, any}
+  def scan(ifname) when is_atom(ifname) do
+    log_atomized_iface_error(ifname)
+    scan(to_string(ifname))
+  end
+  def scan(ifname) when is_binary(ifname) do
+    with pid when is_pid(pid) <- Process.whereis(pname(ifname)),
+      :wireless <- if_type(ifname) do
+        GenServer.call(pid, :scan, 30_000)
+      else
+       # If there is no pid.
+       nil -> {:error, :not_started}
+       # if the interface was wired.
+       :wired -> {:error, :not_wireless}
+      end
   end
 
   defp pname(ifname) when is_atom(ifname) do
@@ -163,6 +179,8 @@ defmodule Nerves.Network.IFSupervisor do
     [Nerves.Network.WiFiManager]
   end
 
+
+  @spec if_type(Types.ifname) :: :wired | :wireless
   # Categorize networks into wired and wireless based on their if names
   defp if_type(<<"eth", _rest::binary>>), do: :wired
   defp if_type(<<"usb", _rest::binary>>), do: :wired

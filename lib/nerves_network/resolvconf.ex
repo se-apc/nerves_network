@@ -2,6 +2,7 @@ defmodule Nerves.Network.Resolvconf do
   use GenServer
   use Nerves.Network.Debug
   require Logger
+  alias Nerves.Network.Types
 
   @moduledoc """
   This module manages the contents of "/etc/resolv.conf". This file is used
@@ -11,17 +12,28 @@ defmodule Nerves.Network.Resolvconf do
   file, their changes will be lost on the next update.
   """
 
+  @type resolvconf :: GenServer.server
+
+  @typedoc "Settings for resolvconf"
+  @type ifmap :: %{
+    domain: String.t,
+    nameservers: [Types.ip_address]
+  }
+
   @resolvconf_path "/etc/resolv.conf"
 
   @doc """
-  Return the default `resolve.conf` path for this system.
+  Default `resolv.conf` path for this system.
   """
+  @spec default_resolvconf_path :: Path.t
   def default_resolvconf_path do
     @resolvconf_path
   end
 
   @doc """
+  Start the resolv.conf manager.
   """
+  @spec start_link(Path.t, GenServer.options) :: GenServer.on_start
   def start_link(resolvconf_path \\ @resolvconf_path, opts \\ []) do
     GenServer.start_link(__MODULE__, resolvconf_path, opts)
   end
@@ -37,18 +49,21 @@ defmodule Nerves.Network.Resolvconf do
 
     %{domain: "example.com", nameservers: ["8.8.8.8", "8.8.4.4"]}
   """
-  def setup(pid, ifname, options) when is_list(options) do
-    setup(pid, ifname, :maps.from_list(options))
+  @spec setup(resolvconf, Types.ifname, Nerves.Network.setup_settings | Types.udhcp_info) :: :ok
+  def setup(resolv_conf, ifname, options) when is_list(options) do
+    setup(resolv_conf, ifname, :maps.from_list(options))
   end
-  def setup(pid, ifname, options) when is_map(options) do
-    GenServer.call(pid, {:setup, ifname, options})
+
+  def setup(resolv_conf, ifname, options) when is_map(options) do
+    GenServer.call(resolv_conf, {:setup, ifname, options})
   end
 
   @doc """
   Set the search domain for non fully qualified domain name lookups.
   """
-  def set_domain(pid, ifname, domain) do
-    GenServer.call(pid, {:set_domain, ifname, domain})
+  @spec set_domain(resolvconf, Types.ifname, String.t) :: :ok
+  def set_domain(resolv_conf, ifname, domain) do
+    GenServer.call(resolv_conf, {:set_domain, ifname, domain})
   end
 
   @doc """
@@ -56,24 +71,32 @@ defmodule Nerves.Network.Resolvconf do
   will be added to "/etc/resolv.conf" and replace any entries that
   were previously added for the specified interface.
   """
-  def set_nameservers(pid, ifname, servers) when is_list(servers) do
-    GenServer.call(pid, {:set_nameservers, ifname, servers})
+  @spec set_nameservers(resolvconf, Types.ifname, [Types.ip_address]) :: :ok
+  def set_nameservers(resolv_conf, ifname, servers) when is_list(servers) do
+    GenServer.call(resolv_conf, {:set_nameservers, ifname, servers})
   end
 
   @doc """
   Clear all entries in "/etc/resolv.conf" that are associated with
   the specified interface.
   """
-  def clear(pid, ifname) do
-    GenServer.call(pid, {:clear, ifname})
+  @spec clear(resolvconf, Types.ifname) :: :ok
+  def clear(resolv_conf, ifname) do
+    GenServer.call(resolv_conf, {:clear, ifname})
   end
 
   @doc """
   Completely clear out "/etc/resolv.conf".
   """
-  def clear_all(pid) do
-    GenServer.call(pid, :clear_all)
+  @spec clear_all(resolvconf) :: :ok
+  def clear_all(resolv_conf) do
+    GenServer.call(resolv_conf, :clear_all)
   end
+
+  ## GenServer
+
+  @typedoc "State of the server."
+  @type state :: %{ifname: Types.ifname, ifmap: ifmap}
 
   def init(filename) do
     unless @debug? do
@@ -90,11 +113,13 @@ defmodule Nerves.Network.Resolvconf do
     write_resolvconf(state)
     {:reply, :ok, state}
   end
+
   def handle_call({:set_nameservers, ifname, nameservers}, _from, state) do
     state = put_in(state[ifname].nameservers, nameservers)
     write_resolvconf(state)
     {:reply, :ok, state}
   end
+
   def handle_call({:setup, ifname, ifentry}, _from, state) do
     new_ifentry = state.ifmap
                     |> Map.get(ifname, %{})
@@ -103,21 +128,26 @@ defmodule Nerves.Network.Resolvconf do
     write_resolvconf(state)
     {:reply, :ok, state}
   end
+
   def handle_call({:clear, ifname}, _from, state) do
     state = %{state | ifmap: Map.delete(state.ifmap, ifname)}
     write_resolvconf(state)
     {:reply, :ok, state}
   end
+
   def handle_call(:clear_all, _from, state) do
     state = %{state | ifmap: %{}}
     write_resolvconf(state)
     {:reply, :ok, state}
   end
 
+  @spec domain_text({Types.ifname, ifmap} | any) :: String.t
   defp domain_text({_ifname, %{:domain => domain, :ipv6_domain => ipv6_domain}}) when domain != "" or ipv6_domain != "", do: "search #{domain} #{ipv6_domain}\n"
   defp domain_text({_ifname, %{:domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text(_), do: ""
+
+  @spec nameserver_text({Types.ifname, ifmap} | any) :: [String.t]
   defp nameserver_text({_ifname, %{:nameservers => nslist}}) do
     for ns <- nslist, do: "nameserver #{ns}\n"
   end
@@ -130,6 +160,7 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver6_text(_), do: ""
 
+  @spec write_resolvconf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
   defp write_resolvconf(state) do
     Logger.debug fn -> "#{__MODULE__}: write_resolvconf state = #{inspect state}" end
 

@@ -1,9 +1,10 @@
 defmodule Nerves.Network do
   require Logger
+  alias Nerves.Network.Types
 
   @moduledoc """
   The Nerves.Network application handles the low level details of connecting
-  to WiFi networks. To quickly get started, create a new Nerves project and add
+  to networks. To quickly get started, create a new Nerves project and add
   the following line someplace early on in your program:
 
       Nerves.Network.setup "wlan0", ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"
@@ -18,6 +19,20 @@ defmodule Nerves.Network do
   acquire an IP address.
   """
 
+  @typedoc "Settings to `setup/2`"
+  @type setup_setting ::
+    {:ipv4_address_method, :dhcp | :static | :linklocal} |
+    {:ipv4_address, Types.ip_address} |
+    {:ipv4_subnet_mask, Types.ip_address} |
+    {:domain, String.t} |
+    {:nameservers, [Types.ip_address]} |
+    {:ssid, String.t} |
+    {:key_mgmt, :"WPA-PSK" | :NONE} |
+    {:psk, String.t}
+
+  @typedoc "Keyword List settings to `setup/2`"
+  @type setup_settings :: [setup_setting]
+
   @doc """
   Configure the specified interface. Settings contains one or more of the
   following:
@@ -31,24 +46,30 @@ defmodule Nerves.Network do
     * `:key_mgmt` - e.g., `:"WPA-PSK"` or `:NONE`
     * `:psk` - e.g., "my-secret-wlan-key"
 
+  See `t(#{__MODULE__}.setup_setting)` for more info.
   """
+  @spec setup(Types.ifname, setup_settings) :: :ok
   def setup(ifname, settings \\ []) do
     Logger.debug fn -> "#{__MODULE__} setup(#{ifname}, #{inspect settings})" end
-    Nerves.Network.Config.put ifname, settings
+    {:ok, {_new, _old}} = Nerves.Network.Config.put ifname, settings
+    :ok
   end
 
   @doc """
   Stop all control of `ifname`
   """
+  @spec teardown(Types.ifname) :: :ok
   def teardown(ifname) do
     Logger.debug fn -> "#{__MODULE__} teardown(#{ifname})" end
-    Nerves.Network.Config.drop ifname
+    {:ok, {_new, _old}} = Nerves.Network.Config.drop ifname
+    :ok
   end
 
   @doc """
   Convenience function for returning the current status of a network interface
   from SystemRegistry.
   """
+  @spec status(Types.ifname) :: Nerves.NetworkInterface.Worker.status | nil
   def status(ifname) do
     SystemRegistry.match(:_)
     |> get_in([:state, :network_interface, ifname])
@@ -57,6 +78,7 @@ defmodule Nerves.Network do
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
+  @spec scan(Types.ifname) :: [String.t] | {:error, any}
   def scan(ifname) do
     Nerves.Network.IFSupervisor.scan ifname
   end
@@ -64,7 +86,7 @@ defmodule Nerves.Network do
   @doc """
   Change the regulatory domain for wireless operations. This must be set to the
   two character `alpha2` code for the country where this device is operating.
-  See http://git.kernel.org/cgit/linux/kernel/git/sforshee/wireless-regdb.git/tree/db.txt
+  See [the kernel database](http://git.kernel.org/cgit/linux/kernel/git/sforshee/wireless-regdb.git/tree/db.txt)
   for the latest database and the frequencies allowed per country.
 
   The default is to use the world regulatory domain (00).
@@ -74,6 +96,7 @@ defmodule Nerves.Network do
       config :nerves_network,
         regulatory_domain: "US"
   """
+  @spec set_regulatory_domain(String.t) :: :ok
   def set_regulatory_domain(country) do
     Logger.warn "Regulatory domain currently can only be updated on WiFi device addition."
     Application.put_env(:nerves_network, :regulatory_domain, country)

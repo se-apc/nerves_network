@@ -1,6 +1,13 @@
 # Changelog
 
-## v0.3.5-dev
+## v0.3.6
+  * Bug Fixes
+    * Fix wired DHCP manager, not claiming ip address.
+
+## v0.3.5
+
+  * Enhancements
+    * Fix reporting of unhandled DHCP events.
 
 ## v0.3.4
 

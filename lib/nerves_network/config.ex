@@ -1,10 +1,12 @@
 defmodule Nerves.Network.Config  do
+  @moduledoc false
+
   use GenServer
 
   require Logger
 
   alias SystemRegistry, as: SR
-  alias Nerves.Network.IFSupervisor
+  alias Nerves.Network.{IFSupervisor, Types}
 
   use Nerves.Network.Debug
 
@@ -13,32 +15,32 @@ defmodule Nerves.Network.Config  do
 
   @debug? false
 
-    def start_link do
-      GenServer.start_link(__MODULE__, [], name: __MODULE__)
-    end
+  def start_link do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  end
 
-    def handle_call({:put, iface, config, priority}, _from, state) do
-      Logger.debug fn -> "#{__MODULE__}: drop(iface = #{inspect iface}, config = #{inspect config}, priority = #{inspect priority})" end
-      result = scope(iface)
-               |> SR.update(config, priority: priority)
-      {:reply, result, state}
-    end
+  def handle_call({:put, iface, config, priority}, _from, state) do
+    Logger.debug fn -> "#{__MODULE__}: drop(iface = #{inspect iface}, config = #{inspect config}, priority = #{inspect priority})" end
+    result = scope(iface)
+              |> SR.update(config, priority: priority)
+    {:reply, result, state}
+  end
 
-    def handle_call({:drop, iface, priority}, _from, state) do
-      Logger.debug fn -> "#{__MODULE__}: drop(iface = #{inspect iface}, priority = #{inspect priority})" end
-      result = scope(iface)
-               |> SR.delete(priority: priority)
-      {:reply, result, state}
-     end
+  def handle_call({:drop, iface, priority}, _from, state) do
+    Logger.debug fn -> "#{__MODULE__}: drop(iface = #{inspect iface}, priority = #{inspect priority})" end
+    result = scope(iface)
+              |> SR.delete(priority: priority)
+    {:reply, result, state}
+  end
 
+  @spec put(Types.ifname, Nerves.Network.setup_settings, atom) :: {:ok, {old :: map, new ::map}}
+  def put(iface, config, priority \\ @priority) do
+    GenServer.call(__MODULE__, {:put, iface, config, priority})
+  end
 
-    def put(iface, config, priority \\ @priority) do
-      GenServer.call(__MODULE__, {:put, iface, config, priority})
-    end
-
-    def drop(iface, priority \\ @priority) do
-      GenServer.call(__MODULE__, {:drop, iface, priority})
-    end
+  def drop(iface, priority \\ @priority) do
+    GenServer.call(__MODULE__, {:drop, iface, priority})
+  end
 
   def init([]) do
     debug_init(@debug?)
@@ -96,6 +98,7 @@ defmodule Nerves.Network.Config  do
     new
   end
 
+  @spec scope(Types.ifname, append :: SR.scope) :: SR.scope
   defp scope(iface, append \\ []) do
     @scope ++ [iface | append]
   end
