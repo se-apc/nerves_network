@@ -50,7 +50,7 @@ defmodule Nerves.Network do
   """
   @spec setup(Types.ifname, setup_settings) :: :ok
   def setup(ifname, settings \\ []) do
-    Logger.debug "#{__MODULE__} setup(#{ifname}, #{inspect settings})"
+    Logger.debug fn -> "#{__MODULE__} setup(#{ifname}, #{inspect settings})" end
     {:ok, {_new, _old}} = Nerves.Network.Config.put ifname, settings
     :ok
   end

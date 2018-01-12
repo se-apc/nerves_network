@@ -1,8 +1,11 @@
 defmodule Nerves.Network.DHCPManager do
+
+  @debug? false
   use GenServer
   require Logger
   import Nerves.Network.Utils
   alias Nerves.Network.Types
+  use Nerves.Network.Debug
 
   @moduledoc false
 
@@ -34,15 +37,19 @@ defmodule Nerves.Network.DHCPManager do
   @doc false
   @spec start_link(Types.ifname, dhcp_settings, GenServer.options) :: GenServer.on_start
   def start_link(ifname, settings, opts \\ []) do
+    Logger.debug fn -> "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
   def init({ifname, settings}) do
+    debug_init(@debug?)
+
     # Register for nerves_network_interface and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
     {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
     state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
+    Logger.debug fn -> "#{__MODULE__}: initialising.... state: #{inspect state}" end
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -129,7 +136,7 @@ defmodule Nerves.Network.DHCPManager do
 
   # Handle Udhcpc events coming from SystemRegistry.
   def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.debug "DHCPManager(#{s.ifname}) udhcpc #{inspect event}"
+    Logger.debug fn -> "#{__MODULE__}: DHCPManager(#{s.ifname}) udhcpc #{inspect event}" end
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
@@ -231,9 +238,17 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
+  defp consume(:up, {:renew, info}, state) do
+    state
+    |> configure(info)
+
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    state
+  end
   # Catch-all handler for consume
   defp consume(context, event, state) do
-    Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
+    Logger.warn fn -> "Unhandled event #{inspect event} for context #{inspect context} in consume/3." end
     state
   end
 

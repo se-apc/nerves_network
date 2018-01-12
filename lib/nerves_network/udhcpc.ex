@@ -16,6 +16,7 @@ defmodule Nerves.Network.Udhcpc do
   use GenServer
   require Logger
   alias Nerves.Network.{Types, Utils}
+  use Nerves.Network.Debug
 
   @typedoc "Instance of this server."
   @type udhcpc :: GenServer.server
@@ -30,6 +31,7 @@ defmodule Nerves.Network.Udhcpc do
   """
   @spec start_link(Types.ifname) :: GenServer.on_start()
   def start_link(ifname) do
+    Logger.debug fn -> "#{__MODULE__}: Starting Udhcpc for #{inspect ifname}" end
     GenServer.start_link(__MODULE__, ifname)
   end
 
