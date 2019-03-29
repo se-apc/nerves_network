@@ -305,7 +305,10 @@ defmodule Nerves.Network.DHCPv6Manager do
 
   defp setup_iface(state, info) do
     case Nerves.NetworkInterface.setup(state.ifname, translate_ipv6_address(info)) do
-      :ok -> :ok
+      :ok ->
+        Logger.info ".setup_iface notifying Nerves.NetworkInterface :ifchanged - info #{inspect info}"
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, info)
+        :ok
       {:error, :eexist} -> :ok
         #It may very often happen that at the renew time we would receive the lease of the very same IP address...
         #In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
@@ -334,7 +337,9 @@ defmodule Nerves.Network.DHCPv6Manager do
   defp configure(state, info) do
     Logger.warn("DHCP state #{inspect state} #{inspect info}")
 
-    :ok = setup_iface(state, info)
+    #We want to fetch the key :ipv6_dhcp = [:stateful | :stateless] from the state.settings list of key-value pairs
+    #and implant it in the info map communicated to the registered listeners
+    :ok = setup_iface(state, Map.put(info, :dhcpv6_mode, Keyword.get(state.settings, :ipv6_dhcp)))
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
 
     # Show that the route has been updated

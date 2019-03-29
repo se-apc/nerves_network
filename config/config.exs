@@ -21,7 +21,7 @@ config :nerves_network, :default,
 config :nerves_network, :dhclientv6,
   ipv6: [
     lease_file:  "/root/dhclient6.leases",
-    pid_file:    "/root/dhclient6.pid"
+    pid_file:    "/root/dhclient6.pid",
     config_file: "/root/dhclient6.conf"
   ]
 

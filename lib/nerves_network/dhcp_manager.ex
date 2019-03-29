@@ -283,7 +283,9 @@ defmodule Nerves.Network.DHCPManager do
 
   defp setup_iface(state, info) do
     case Nerves.NetworkInterface.setup(state.ifname, info) do
-      :ok -> :ok
+      :ok ->
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, info)
+        :ok
       {:error, :eexist} -> :ok
         #It may very often happen that at the renew time we would receive the lease of the very same IP address...
         #In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
@@ -310,7 +312,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp configure(state, info) do
-    Logger.warn "DHCP state #{inspect state} #{inspect info}"
+    Logger.debug "DHCP state #{inspect state} #{inspect info}"
 
     :ok = setup_iface(state, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
