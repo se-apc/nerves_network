@@ -312,7 +312,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp configure(state, info) do
-    Logger.warn "DHCP state #{inspect state} #{inspect info}"
+    Logger.debug "DHCP state #{inspect state} #{inspect info}"
 
     :ok = setup_iface(state, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
