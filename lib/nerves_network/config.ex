@@ -53,7 +53,6 @@ defmodule Nerves.Network.Config  do
 
   def handle_info({:system_registry, :global, registry}, s) do
     # The registry is HUGE.  Do not inspect unless its necessary
-    #Logger.debug fn -> "++++ handle_info: registry = #{inspect registry}; s = #{inspect s}" end
     net_config = get_in(registry, @scope) || %{}
     s = update(net_config, s)
     {:noreply, s}
@@ -73,7 +72,6 @@ defmodule Nerves.Network.Config  do
     removed = Enum.map(removed, fn({k, _}) -> {k, %{}} end)
     modified = added ++ modified
 
-    Logger.debug fn -> "#{__MODULE__}: modified = #{inspect modified}" end
     Enum.each(modified, fn({iface, settings}) ->
       IFSupervisor.setup(iface, settings)
     end)
