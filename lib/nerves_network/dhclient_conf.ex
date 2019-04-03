@@ -565,7 +565,6 @@ defmodule Nerves.Network.DhclientConf do
     state = %{filename: config_file_name, ifmap: %{}, timing: timing_defaults()}
     write_dhclient_conf(state)
     Logger.debug("init: filename = #{inspect config_file_name}: state = #{inspect state}")
-    IO.puts "#{__MODULE__}: init: filename = #{inspect config_file_name}: state = #{inspect state}"
     {:ok, state}
   end
 
