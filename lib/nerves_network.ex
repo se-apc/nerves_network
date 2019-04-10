@@ -69,6 +69,30 @@ defmodule Nerves.Network do
   end
 
   @doc """
+  Stops selected controls (aka managers) of `ifname`. The controls are being passed in a form of the keyword list.
+  Returns `{:ok, list()}`.
+
+  ## Parameters
+  - ifname: String identifying network interface's name i.e. "eth0"
+  - settings: a Keyword list with the settings i.e. [ipv4_address_method: :dhcp, ipv6_dhcp: stateless]. For stop function the key values are
+            irelevant because the settings are used for only locating an appropriate manager tied to the network interface specified with ifname.
+
+  ## Examples
+
+        iex> Nerves.Network.teardown("eth0", [ipv6_dhcp: :stateless])
+        {:ok, [ok: :ok]}
+
+        iex> Nerves.Network.teardown("eth0", [ipv4_address_method: :dhcp])
+        {:ok, [ok: :ok]}
+
+        iex> Nerves.Network.teardown("non_existent", [ipv6_dhcp: :stateless])
+        [{{:error, :not_found}, {:error, :not_found}}]
+
+  """
+  @spec teardown(Types.ifname, list()) :: {:ok, list(Nerves.Network.IFSupervisor.child_termination_t())}
+  defdelegate teardown(ifname, settings), to: Nerves.Network.IFSupervisor, as: :stop
+
+  @doc """
   Convenience function for returning the current status of a network interface
   from SystemRegistry.
   """

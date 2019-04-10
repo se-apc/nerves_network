@@ -114,4 +114,36 @@ defmodule Nerves.Network.Utils do
       false
     end
   end
+
+  defmodule Registry do
+    @moduledoc """
+    A Registry sumbodule of Nerves.Network.Utils encompassing the utilities associated with the Registry module.
+    """
+
+    @type t ::
+      {:ok, pid()}
+    | {:error, {:already_registered, pid()}}
+
+    @doc """
+    Returns `Nerves.Network.Utils.Registry.t()`.
+
+    ## Parameters
+    - results: Returned values of of Registry.register/2 function
+
+    ## Examples
+
+    iex> Nerves.Network.Utils.digest_register_results({:ok, pid})
+    iex> is_pid(pid) == true
+
+    """
+    @spec digest_register_results(t() | any()) :: t() | no_return()
+    def digest_register_results(results) do
+      case results do
+        {:ok, _pid} -> results
+        {:error, {:already_registered, _pid}} -> results
+        other -> raise "Registry.register(...) returned unexpected results: #{inspect other}!"
+      end
+    end
+  end
+
 end
