@@ -35,31 +35,95 @@ defmodule Nerves.Network.IFSupervisor do
 
   def setup(ifname, settings) do
     manager_modules = managers(if_type(ifname), settings)
-    Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
+    Logger.debug(".setup manager_modules: #{inspect manager_modules}")
 
     children =
       for manager <- manager_modules  do
         child_name = pname(ifname, manager)
         worker(manager, [ifname, settings, [name: child_name]], [id: {pname(ifname), child_name}, restart: restart_type(manager)])
       end
-    Logger.debug fn -> "#{__MODULE__} children: #{inspect children}" end
+
+    Logger.debug(".setup children: #{inspect children}")
+
+    result =
+      {:ok, for child <- children do
+              Logger.debug(".setup Starting child: #{inspect child}...")
+              retval = Supervisor.start_child(__MODULE__, child)
+              Logger.debug(".setup retval = #{inspect retval}...")
+              retval
+            end #For child <- children
+      }
+
+    Logger.debug(".setup returns #{inspect result}")
+  end
+
+
+
+  @doc """
+  Returns `{:ok, list()}`.
+
+  ## Parameters
+  - ifname: String identifying network interface's name i.e. "eth0"
+  - settings: a Keyword list with the settings i.e. [ipv4_address_method: :dhcp, ipv6_dhcp: stateless]. For stop function the key values are
+            irelevant because the settings are used for only locating an appropriate manager tied to the network interface specified with ifname.
+
+  ## Examples
+
+        iex> Nerves.Network.IFSupervisor.stop("eth0", [ipv6_dhcp: :stateless])
+        {:ok, [ok: :ok]}
+
+        iex> Nerves.Network.IFSupervisor.stop("eth0", [ipv4_address_method: :dhcp])
+        {:ok, [ok: :ok]}
+
+        iex> Nerves.Network.IFSupervisor.stop("non_existent", [ipv6_dhcp: :stateless])
+        [{{:error, :not_found}, {:error, :not_found}}]
+
+  """
+  @spec stop(Types.ifname, list()) :: {:ok, list(child_termination_t())}
+  def stop(ifname, settings) do
+    Logger.debug(".stop ifname = #{inspect ifname}; settings = #{inspect settings}")
+    manager_modules = managers(if_type(ifname), settings)
+
+    children =
+      for manager <- manager_modules  do
+        #For termination we only need parent and child names
+        child_name  = pname(ifname, manager)
+        parent_name = pname(ifname)
+        {parent_name, child_name}
+      end
+
+    Logger.debug(".stop children: #{inspect children}")
 
     result = {:ok, for child <- children do
-                      Logger.debug  fn -> "#{__MODULE__} Starting child: #{inspect child}..." end
-                      retval = Supervisor.start_child(__MODULE__, child)
-                      Logger.debug  fn -> "#{__MODULE__}    retval = #{inspect retval}..." end
+                      Logger.debug(".stop Stopping child: #{inspect child}...")
+                      retval = terminate_child(child)
+                      Logger.debug(".stop retval = #{inspect retval}...")
                       retval
                     end #For child <- children
       }
 
-    Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
+    Logger.debug(".stop result: #{inspect result}")
     result
   end
 
+  @type deletion_supervisor_error :: :not_found | :simple_one_for_one | :running | :restarting
+  @type termination_supervisor_error :: :not_found | :simple_one_for_one
+  @type termination_retval_t ::  :ok | {:error, termination_supervisor_error()}
+  @type deletion_retval_t ::  :ok | {:error, deletion_supervisor_error()}
+  @type child_termination_t :: {termination_retval_t(), deletion_retval_t()}
 
+  #Child is one of the following sample specs:
+  #  spec1: {{:"Nerves.Network.Interface.ens33", :"Elixir.Nerves.Network.DHCPv6Manager.ens33"}, #PID<0.216.0>, :worker, [Nerves.Network.DHCPv6Manager]}
+  #  spec2: {{:"Nerves.Network.Interface.eth1", :"Elixir.Nerves.Network.DHCPv6Manager.eth1"},
+  #          {Nerves.Network.DHCPv6Manager, :start_link, ["eth1", [ipv6_dhcp: :stateful], [name: :"Elixir.Nerves.Network.DHCPv6Manager.eth1"]]},
+  #          :transient, 5000, :worker, [Nerves.Network.DHCPv6Manager]}..
+  @spec terminate_child(Supervisor.child()) :: child_termination_t()
   defp terminate_child(child) do
-    #Child is of the following sample spec: {{:"Nerves.Network.Interface.ens33", :"Elixir.Nerves.Network.DHCPv6Manager.ens33"}, #PID<0.216.0>, :worker, [Nerves.Network.DHCPv6Manager]}
-    {{parent_name, child_name}, _pid, :worker, _} = child
+    {parent_name, child_name} =
+      case child do
+        {{parent_name, child_name}, _pid, :worker, _} -> {parent_name, child_name}
+        {parent_name, child_name} -> {parent_name, child_name}
+      end
     result1 = Supervisor.terminate_child(__MODULE__, {parent_name, child_name})
     result2 = Supervisor.delete_child(__MODULE__, {parent_name, child_name})
     {result1, result2}
