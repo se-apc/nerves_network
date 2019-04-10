@@ -2,6 +2,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   use GenServer
   require Logger
   import Nerves.Network.Utils
+  alias  Nerves.Network.Utils
 
   @moduledoc false
 
@@ -35,17 +36,28 @@ defmodule Nerves.Network.DHCPv6Manager do
   #
   # end
 
-  def init({ifname, settings}) do
+  def init(arg = {ifname, settings}) do
     # Register for nerves_network_interface and dhclient events
-    {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
-    {:ok, _} = Registry.register(Nerves.Dhclient, ifname, [])
+    Logger.debug ".init(#{inspect arg})"
+
+    # When the ifname network interface had already been registered with registries Nerves.NEtworkInterface or
+    # Nerves.Dhclient that would not be a problem hence we can merely ignore the :already_registered :error
+    # results.
+    rreg_res1 = Registry.register(Nerves.NetworkInterface, ifname, []) |> Utils.Registry.digest_register_results()
+    rreg_res2 = Registry.register(Nerves.Dhclient, ifname, []) |> Utils.Registry.digest_register_results()
+
+    Logger.debug ".init   rreg_res1 = #{inspect rreg_res1}"
+    Logger.debug ".init   rreg_res2 = #{inspect rreg_res2}"
 
     state = %Nerves.Network.DHCPv6Manager{settings: settings, ifname: ifname}
-    Logger.debug fn -> "DHCPv6Manager initialising.... state: #{inspect state}" end
-    Logger.debug fn -> "#{__MODULE__}:   settings: #{inspect settings}" end
+
+    Logger.debug ".init   state = #{inspect state}"
+
+    Logger.debug ".init DHCPv6Manager initialising.... state: #{inspect state}"
+    Logger.debug ".init settings: #{inspect settings}"
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
-    current_interfaces = Nerves.NetworkInterface.interfaces
+    current_interfaces = Nerves.NetworkInterface.interfaces()
     state =
       if Enum.member?(current_interfaces, ifname) do
         consume(state.context, :ifadded, state)
@@ -53,7 +65,7 @@ defmodule Nerves.Network.DHCPv6Manager do
         state
       end
 
-    Logger.debug fn -> "DHCPv6Manager initialising.... state: #{inspect state}" end
+    Logger.debug fn -> "DHCPv6Manager initialising... state: #{inspect state}" end
     {:ok, state}
   end
 
