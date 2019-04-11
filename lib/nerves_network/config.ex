@@ -30,14 +30,14 @@ defmodule Nerves.Network.Config  do
   end
 
   def init([]) do
-    Logger.debug fn -> "#{__MODULE__}: init([])" end
+    Logger.debug("initialising... args= []")
     # If we enable hysteresis we will drop updates that
     # are needed to setup ipv4 and ipv6
     SR.register(min_interval: 500)
     defaults =
       Application.get_env(:nerves_network, :default, [])
 
-    Logger.debug fn -> "#{__MODULE__}: defaults = #{inspect defaults}" end
+    Logger.debug("defaults = #{inspect defaults}")
 
     Process.send_after(self(), {:setup_default_ifaces, defaults}, 0)
     {:ok, %{}}
@@ -59,13 +59,13 @@ defmodule Nerves.Network.Config  do
   end
 
   def update(old, old, _) do
-    Logger.debug fn -> "#{__MODULE__}: update old**2 = #{inspect old}" end
+    Logger.debug("update old**2 = #{inspect old}")
     {old, []}
   end
 
   def update(new, old) do
-    Logger.debug fn -> "#{__MODULE__}: update new = #{inspect new}" end
-    Logger.debug fn -> "#{__MODULE__}: update old = #{inspect old}" end
+    Logger.debug("update new = #{inspect new}")
+    Logger.debug("update old = #{inspect old}")
     {added, removed, modified} =
       changes(new, old)
 
@@ -76,7 +76,8 @@ defmodule Nerves.Network.Config  do
       IFSupervisor.setup(iface, settings)
     end)
 
-    Logger.debug fn -> "#{__MODULE__}: removed = #{inspect removed}" end
+    Logger.debug("removed = #{inspect removed}")
+
     Enum.each(removed, fn({iface, _settings}) ->
       IFSupervisor.teardown(iface)
     end)
@@ -89,8 +90,9 @@ defmodule Nerves.Network.Config  do
   end
 
   defp changes(new, old) do
-    Logger.debug fn -> "#{__MODULE__}: changes new = #{inspect new}" end
-    Logger.debug fn -> "#{__MODULE__}: changes old = #{inspect old}" end
+    Logger.debug("changes new = #{inspect new}")
+    Logger.debug("changes old = #{inspect old}")
+
     added =
       Enum.filter(new, fn({k, _}) -> Map.get(old, k) == nil end)
     removed =
