@@ -116,20 +116,18 @@ defmodule Nerves.Network.DHCPv6Manager do
     :noop
   end
 
-  def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
-    Logger.debug("ifstate = #{inspect(ifstate)}")
+  def handle_info({source = Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
+    Logger.debug("source = #{inspect source}; ifstate = #{inspect(ifstate)}")
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.debug("DHCPv6Manager(#{s.ifname}, #{s.context}) got event #{inspect(event)}")
+    Logger.debug("(#{s.ifname}, #{s.context}) got event #{inspect(event)}")
     {:noreply, s}
   end
 
   #  info: %{domain_search: "ipv6.doman.name", ifname: "eth1", ipv6_address: "666::16/64", nameservers: ["fec0:0:0:1::7"]}
   def handle_info({Nerves.Dhclient, event, info}, %{ifname: ifname} = s) do
-    Logger.debug(
-      "DHCPv6Manager.EventHandler(#{s.ifname}) event: #{inspect(event)}; info: #{inspect(info)}"
-    )
+    Logger.debug("(#{s.ifname}) event: #{inspect(event)}; info: #{inspect(info)}")
 
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
@@ -343,19 +341,37 @@ defmodule Nerves.Network.DHCPv6Manager do
     state
   end
 
-  defp translate_ipv6_address(info = %{ipv6_address: ""}) do
-    Map.drop(info, [:ipv6_address])
+  # When the new IPv6 address is being specified we do not need to do anything.
+  defp translate_ipv6_address(info = %{ipv6_address: _ipv6_address, old_ipv6_address: _old_ipv6_address}) do
+    info
   end
 
+  # When the new IPv6 address hasn't been specified but the old IPv6 address has been, we shall provide an empty string for new IPv6.
+  # This is common scenarion in the case of DHCPv6 IP address expiration or lack of bind to the IPv6 network with the corresponding DHCPv6
+  # server, from which, we have a valid lease.
+  defp translate_ipv6_address(info = %{old_ipv6_address: _old_ipv6_address}) do
+    Map.put(info, :ipv6_address, "")
+  end
+
+  #We shall simply forward all other cases
   defp translate_ipv6_address(info) do
     info
   end
 
+  # Nerves.NetworkInterface will report {:error, :einval} when an empty string is passed as IPv6 address.
+  defp drop_ipv6_address_if_empty(info = %{ipv6_address: ""}) do
+    Map.drop(info, [:ipv6_address])
+  end
+
+  defp drop_ipv6_address_if_empty(info) do
+    info
+  end
+
   defp setup_iface(state, info) do
-    case Nerves.NetworkInterface.setup(state.ifname, translate_ipv6_address(info)) do
+    case Nerves.NetworkInterface.setup(state.ifname, drop_ipv6_address_if_empty(info)) do
       :ok ->
         Logger.info("notifying Nerves.NetworkInterface :ifchanged - info #{inspect(info)}")
-        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, info)
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, translate_ipv6_address(info))
         :ok
 
       {:error, :eexist} ->
@@ -385,7 +401,7 @@ defmodule Nerves.Network.DHCPv6Manager do
 
   defp configure(:no_resolv_conf, state, info) do
     remove_old_ip(state, info)
-    :ok = setup_iface(state, info)
+    :ok = setup_iface(state, Map.put(info, :dhcpv6_mode, Keyword.get(state.settings, :ipv6_dhcp)))
     state
   end
 
