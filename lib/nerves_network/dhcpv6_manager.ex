@@ -358,7 +358,7 @@ defmodule Nerves.Network.DHCPv6Manager do
     info
   end
 
-  # Nerves.NetworkInterface will report {:error, :einval} when an empty string is passed sa IPv6 address.
+  # Nerves.NetworkInterface will report {:error, :einval} when an empty string is passed as IPv6 address.
   defp drop_ipv6_address_if_empty(info = %{ipv6_address: ""}) do
     Map.drop(info, [:ipv6_address])
   end
