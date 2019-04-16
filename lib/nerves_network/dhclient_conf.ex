@@ -489,6 +489,10 @@ defmodule Nerves.Network.DhclientConf do
     %{new_state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
   end
 
+  defp update_state(item_name, ifname, value, state)  do
+    update_item(item_name, ifname, value, state)
+  end
+
   @spec update_state(atom(), protocol_timing() | nil, state) :: state
   defp update_state(_item_name = :timing, _value = nil, state)  do
     %{state | timing: %{}}
@@ -496,10 +500,6 @@ defmodule Nerves.Network.DhclientConf do
 
   defp update_state(_item_name = :timing, value, state)  do
     %{state | timing: value}
-  end
-
-  defp update_state(item_name, ifname, value, state)  do
-    update_item(item_name, ifname, value, state)
   end
 
   @spec add_to_also_request(Type.ifname, list(list(String.t)) | [] | nil, state) :: state
