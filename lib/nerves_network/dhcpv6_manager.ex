@@ -361,6 +361,10 @@ defmodule Nerves.Network.DHCPv6Manager do
       {:error, :eexist} ->
         :ok
 
+      other ->
+        Logger.warn("Unexpected return #{inspect other} from Nerves.NetworkInterface.setup(#{inspect state.ifname}, #{inspect info}")
+        :ok
+
         # It may very often happen that at the renew time we would receive the lease of the very same IP address...
         # In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
         # It definitely is non-critical situation and actually confirms that we do not have to take any action.
