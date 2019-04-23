@@ -20,16 +20,18 @@ config :nerves_network, :default,
 #i.e. dhclient6.leases.eth0
 config :nerves_network, :dhclientv6,
   ipv6: [
-    lease_file:  "/root/dhclient6.leases",
-    pid_file:    "/root/dhclient6.pid",
-    config_file: "/root/dhclient6.conf"
+    lease_file:        "/root/dhclient6.leases",
+    pid_file:          "/root/dhclient6.pid",
+    config_file:       "/root/dhclient6.conf",
+    flush_resolv_conf: false # At network interface down event clear resolver configuration held in resolv.conf
   ]
 
 config :nerves_network, :dhclientv4,
   ipv4: [
-    lease_file:  "/root/dhclient4.leases",
-    pid_file:    "/root/dhclient4.pid",
-    config_file: "/root/dhclient4.conf"
+    lease_file:        "/root/dhclient4.leases",
+    pid_file:          "/root/dhclient4.pid",
+    config_file:       "/root/dhclient4.conf"
+    flush_resolv_conf: false # At network interface down event clear resolver configuration held in resolv.conf
   ]
 
 config :nerves_network, :resolver,
