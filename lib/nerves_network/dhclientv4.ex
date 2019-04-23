@@ -320,9 +320,7 @@ defmodule Nerves.Network.Dhclientv4 do
 
   # Handling informational debug prints from the dhclient
   defp handle_dhclient([message], state) do
-    Logger.debug(
-      "#{__MODULE__} handle_dhclient args = #{inspect(message)} state = #{inspect(state)}"
-    )
+    Logger.debug("handle_dhclient args = #{inspect(message)} state = #{inspect(state)}")
 
     {:noreply, state}
   end
