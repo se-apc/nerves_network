@@ -43,7 +43,7 @@ defmodule Nerves.Network.DHCPv6Manager do
     # Register for nerves_network_interface and dhclient events
     Logger.debug("arg = #{inspect(arg)}")
 
-    # When the ifname network interface had already been registered with registries Nerves.NEtworkInterface or
+    # When the ifname network interface had already been registered with registries Nerves.NetworkInterface or
     # Nerves.Dhclient that would not be a problem hence we can merely ignore the :already_registered :error
     # results.
     rreg_res1 =
@@ -51,7 +51,8 @@ defmodule Nerves.Network.DHCPv6Manager do
       |> Utils.Registry.digest_register_results()
 
     rreg_res2 =
-      Registry.register(Nerves.Dhclient, ifname, []) |> Utils.Registry.digest_register_results()
+      Registry.register(Nerves.Dhclient, ifname, [])
+      |> Utils.Registry.digest_register_results()
 
     Logger.debug("rreg_res1 = #{inspect(rreg_res1)}")
     Logger.debug("rreg_res2 = #{inspect(rreg_res2)}")
@@ -241,6 +242,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   defp consume(:dhcpv6, :ifdown, state) do
     state
     |> stop_dhclient
+    |> deconfigure
     |> goto_context(:down)
   end
 
@@ -413,13 +415,30 @@ defmodule Nerves.Network.DHCPv6Manager do
     :ok = setup_iface(state, Map.put(info, :dhcpv6_mode, Keyword.get(state.settings, :ipv6_dhcp)))
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
 
-    # Show that the route has been updated
-    System.cmd("route", []) |> elem(0) |> Logger.error()
     state
   end
 
+  defp flush_resolv_conf_on_deconfig?() do
+    [ipv6: runtime] = Application.get_env(:nerves_network, :dhclientv6, [])
+    if Keyword.has_key?(runtime, :flush_resolv_conf) do
+      retval = Keyword.get(runtime, :flush_resolv_conf)
+
+      Logger.debug("'flush_resolv_conf' defined and #{inspect retval}")
+      retval
+    else
+      Logger.debug("'flush_resolv_conf' not defined.")
+      false
+    end
+  end
+
   defp deconfigure(state) do
-    :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
+    Logger.debug("(#{inspect state})")
+    if flush_resolv_conf_on_deconfig?() do
+      Logger.debug("Clearing IPv6 resolver settings...")
+
+      :ok = Nerves.Network.Resolvconf.set_ipv6_domain(Nerves.Network.Resolvconf, state.ifname, "")
+      :ok = Nerves.Network.Resolvconf.set_ipv6_nameservers(Nerves.Network.Resolvconf, state.ifname, [])
+    end
     state
   end
 end
