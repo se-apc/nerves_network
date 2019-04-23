@@ -205,8 +205,7 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(:up, {:bound, info}, state) do
     Logger.debug("(context = :up) :bound info: #{inspect(info)}")
 
-    :no_resolv_conf
-    |> configure(state, info)
+    configure(state, info)
   end
 
   ## I am not sure if :expire and :stop should be here, but they were here before, so I just left them.
@@ -214,8 +213,7 @@ defmodule Nerves.Network.DHCPManager do
        when event in [:renew, :rebind, :reboot, :release, :expire, :stop] do
     Logger.debug("(context = :up) #{inspect(event)} info: #{inspect(info)}")
 
-    :no_resolv_conf
-    |> configure(state, info)
+    configure(state, info)
     |> goto_context(:up)
   end
 
@@ -363,6 +361,7 @@ defmodule Nerves.Network.DHCPManager do
   defp configure(state, info) do
     Logger.debug("DHCP state #{inspect(state)} #{inspect(info)}")
 
+    remove_old_ip(state, info)
     :ok = setup_iface(state, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
 
