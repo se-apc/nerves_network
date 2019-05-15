@@ -253,10 +253,17 @@ defmodule Nerves.Network.Dhclientv4 do
     {:noreply, state}
   end
 
-  defp handle_dhclient([reason | _options], state) when reason in ["MEDIUM", "ARPCHECK", "ARPSEND", "TIMEOUT"] do
-    Logger.debug(
-      "dhclientv4: Received reason '#{reason}'. Not performing any update to network interface."
-    )
+  #[debug] Nerves.Network.Dhclientv4.handle_dhclient/2 : Received reason 'TIMEOUT; options = ["eth0", "10.216.251.86", "10.216.251.127", "255.255.255.128", "10.216.251.1", "eur.gad.schneider-electric.com", "10.156.118.9 10.198.90.15"]'. Not performing any update to network interface.
+  defp handle_dhclient([reason | options], state) when reason in ["MEDIUM", "ARPCHECK", "ARPSEND"] do
+    Logger.debug("Received reason '#{reason}; options = #{inspect options}'. Not performing any update to network interface.")
+
+    {:noreply, state}
+  end
+
+  defp handle_dhclient([reason = "TIMEOUT" | options], state) do
+    Logger.debug("dhclientv4: Received reason '#{reason}'")
+
+    notify(options, :bound, state)
 
     {:noreply, state}
   end
