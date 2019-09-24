@@ -106,6 +106,16 @@ defmodule Nerves.Network.Dhclient do
     end
   end
 
+  # Starting from ISC dhclient v4.4.1 the default prefix length can be specified. If it is not
+  # The default value is 128. Changed from 64 used in previous revisions.
+  defp runtime_default_prefix_length(ifname, runtime) do
+    if Keyword.has_key?(runtime, :default_prefix_length) do
+      ["--address-prefix-len", "#{Keyword.get(runtime, :default_prefix_length)}"]
+    else
+      []
+    end
+  end
+
   # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
   defp dhclient_runtime(ifname, mode) do
     runtime = runtime()
@@ -113,6 +123,7 @@ defmodule Nerves.Network.Dhclient do
     runtime_lease_file(ifname, runtime, mode)
     ++ runtime_pid_file(ifname, runtime, mode)
     ++ runtime_config_file(ifname, runtime)
+    ++ runtime_default_prefix_length(ifname, runtime)
   end
 
   defp runtime() do
@@ -149,7 +160,10 @@ defmodule Nerves.Network.Dhclient do
         port_path,
         "-q",
         "-d"
-      ] ++ dhclient_mode_args(mode) ++ dhclient_runtime(ifname, mode) ++ [ifname]
+      ]
+      ++ dhclient_mode_args(mode)
+      ++ dhclient_runtime(ifname, mode)
+      ++ [ifname]
 
     port =
       Port.open(
