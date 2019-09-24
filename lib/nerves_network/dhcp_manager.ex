@@ -114,6 +114,13 @@ defmodule Nerves.Network.DHCPManager do
     {:noreply, s}
   end
 
+  def handle_info(event = :dhcp_retry, s = %{ifname: ifname}) do
+    Logger.debug("DHCPManager.EventHandler(#{ifname}) dhcp_retry; state = #{inspect s}")
+    s = consume(s.context, event, s)
+    {:noreply, s}
+  end
+
+
   def handle_info(event, s) do
     Logger.debug("DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect(event)}")
     {:noreply, s}
