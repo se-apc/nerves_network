@@ -108,7 +108,7 @@ defmodule Nerves.Network.Dhclient do
 
   # Starting from ISC dhclient v4.4.1 the default prefix length can be specified. If it is not
   # The default value is 128. Changed from 64 used in previous revisions.
-  defp runtime_default_prefix_length(ifname, runtime) do
+  defp runtime_default_prefix_length(_ifname, runtime) do
     if Keyword.has_key?(runtime, :default_prefix_length) do
       ["--address-prefix-len", "#{Keyword.get(runtime, :default_prefix_length)}"]
     else
