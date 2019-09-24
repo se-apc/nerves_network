@@ -317,7 +317,15 @@ defmodule Nerves.Network.Dhclientv4 do
     {:noreply, state}
   end
 
-  defp handle_dhclient([reason | options], state) when reason in ["FAIL", "RELEASE", "STOP"] do
+  defp handle_dhclient([reason | options], state) when reason in ["FAIL"] do
+    Logger.debug("dhclientv4: Received reason '#{reason}'.")
+
+    notify(options, :leasefail, state)
+
+    {:noreply, state}
+  end
+
+  defp handle_dhclient([reason | options], state) when reason in ["RELEASE", "STOP"] do
     Logger.debug("dhclientv4: Received reason '#{reason}'. Bringing interface down.")
 
     notify(options, :ifdown, state)
