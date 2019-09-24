@@ -23,6 +23,7 @@ config :nerves_network, :dhclientv6,
     lease_file:        "/root/dhclient6.leases",
     pid_file:          "/root/dhclient6.pid",
     config_file:       "/root/dhclient6.conf",
+    # default_prefix_length: 64,
     flush_resolv_conf: false # At network interface down event clear resolver configuration held in resolv.conf
   ]
 
