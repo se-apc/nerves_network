@@ -28,6 +28,7 @@ defmodule Nerves.Network do
     {:search, String.t} |
     {:static_domains, list(String.t)} |
     {:nameservers, [Types.ip_address]} |
+    {:ipv6_dhcp, :stateful | :stateless} |
     {:ipv6_nameservers, [Types.ip_address]} |
     {:ssid, String.t} |
     {:key_mgmt, :"WPA-PSK" | :NONE} |
