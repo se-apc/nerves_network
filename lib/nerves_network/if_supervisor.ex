@@ -27,13 +27,15 @@ defmodule Nerves.Network.IFSupervisor do
     :permanent
   end
 
-  @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: Supervisor.on_start_child()
+  @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: [Supervisor.on_start_child()]
   def setup(ifname, settings) when is_atom(ifname) do
     log_atomized_iface_error(ifname)
     setup(to_string(ifname), settings)
   end
 
   def setup(ifname, settings) do
+    Logger.error "++++++++++++ #{ifname} (#{inspect settings})"
+
     manager_modules = managers(if_type(ifname), settings)
     Logger.debug(".setup manager_modules: #{inspect manager_modules}")
 
@@ -55,6 +57,8 @@ defmodule Nerves.Network.IFSupervisor do
       }
 
     Logger.debug(".setup returns #{inspect result}")
+
+    result
   end
 
 
