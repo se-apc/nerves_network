@@ -119,17 +119,17 @@ defmodule Nerves.Network.DhclientConf do
   @doc """
   Set the search domain for non fully qualified domain name lookups.
   """
-  @spec set_vendor_class_id(pid(), Types.ifname, String.t) :: :ok
+  @spec set_vendor_class_id(module(), Types.ifname(), String.t() | nil) :: :ok
   def set_vendor_class_id(server_name, ifname, vendor_class_id) do
     GenServer.call(server_name, {:set, :vendor_class_identifier, ifname, vendor_class_id})
   end
 
-  @spec set_client_id(pid(), Types.ifname, String.t) :: :ok
+  @spec set_client_id(module(), Types.ifname(), String.t() | nil) :: :ok
   def set_client_id(server_name, ifname, client_id) do
     GenServer.call(server_name, {:set, :client_identifier, ifname, client_id})
   end
 
-  @spec set_user_class(pid(), Types.ifname, String.t() | nil) :: :ok
+  @spec set_user_class(module(), Types.ifname, String.t() | nil) :: :ok
   @doc """
   RFC 3004             The User Class Option for DHCP        November 2000
   The format of this option is as follows:
@@ -236,37 +236,37 @@ defmodule Nerves.Network.DhclientConf do
     GenServer.call(server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
   end
 
-  @spec set_request_list(pid(), Types.ifname, list(String.t)) :: :ok
+  @spec set_request_list(module(), Types.ifname, list(String.t)) :: :ok
   def set_request_list(server_name, ifname, request_list) do
     GenServer.call(server_name, {:set, :request, ifname, request_list})
   end
 
-  @spec add_also_request(pid(), Types.ifname, list(String.t)) :: :ok
+  @spec add_also_request(module(), Types.ifname, list(String.t)) :: :ok
   def add_also_request(server_name, ifname, request_list) do
     GenServer.call(server_name, {:add_to, :also_request, ifname, request_list})
   end
 
-  @spec set_also_request(pid(), Types.ifname, list(list(String.t)) | [] | nil) :: :ok
+  @spec set_also_request(module(), Types.ifname, list(list(String.t)) | [] | nil) :: :ok
   def set_also_request(server_name, ifname, request_list) do
     GenServer.call(server_name, {:set, :also_request, ifname, request_list})
   end
 
-  @spec set_require_list(pid(), Types.ifname, list(String.t)) :: :ok
+  @spec set_require_list(module(), Types.ifname, list(String.t)) :: :ok
   def set_require_list(server_name, ifname, require_list) do
     GenServer.call(server_name, {:set, :require, ifname, require_list})
   end
 
-  @spec set_timing(pid(), protocol_timing()) :: :ok
+  @spec set_timing(module(), protocol_timing()) :: :ok
   def set_timing(server_name, timing) do
     GenServer.call(server_name, {:set, :timing, timing})
   end
 
-  @spec clear(pid(), Types.ifname) :: :ok
+  @spec clear(module(), Types.ifname) :: :ok
   def clear(server_name, ifname) do
     GenServer.call(server_name, {:clear, ifname})
   end
 
-  @spec set_protocol_timing(pid(), protocol_timing()) :: :ok
+  @spec set_protocol_timing(module(), protocol_timing()) :: :ok
   @doc """
   Function is meant for setting the DHCP timing
   Returns `:ok`.
