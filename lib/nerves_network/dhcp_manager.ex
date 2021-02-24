@@ -213,7 +213,7 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(cur_state, {:timeout, info}, state) when cur_state in [:dhcp, :up] do
     Logger.debug("(context = :dhcp) #{inspect(:timeout)} info: #{inspect(info)}")
 
-    # Let's try newest valid lease. It is an attempt to asnwer whether we are still connected to the same network as before.
+    # Let's try newest valid lease. It is an attempt to answer whether we are still connected to the same network as before.
     state
     |> configure(info)
     |> deconfigure_if_gateway_not_pingable(info)
