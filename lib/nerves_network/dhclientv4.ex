@@ -20,7 +20,6 @@ defmodule Nerves.Network.Dhclientv4 do
   @renew 1
   @release 2
   @terminate 3
-  @timeout 4
 
   @moduledoc """
   This module interacts with `dhclient` to interact with DHCP servers.
