@@ -318,7 +318,7 @@ defmodule Nerves.Network.DHCPManager do
   ## Neither of these should be called. Not related to Nerves.Network.Dhclientv4.
   defp consume(:dhcp, {:deconfig, _info}, state), do: state
 
-  defp consume(:dhcp, {reason = :leasefail, _info}, state) do
+  defp consume(:dhcp, {_reason = :leasefail, _info}, state) do
     state
     |> start_link_local() # Let's configure the link-local 169.254.x.y address
     |> goto_context(:up)
