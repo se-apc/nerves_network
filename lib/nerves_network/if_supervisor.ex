@@ -34,7 +34,7 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   def setup(ifname, settings) do
-    Logger.error "++++++++++++ #{ifname} (#{inspect settings})"
+    Logger.debug"#{ifname} (#{inspect settings})"
 
     manager_modules = managers(if_type(ifname), settings)
     Logger.debug(".setup manager_modules: #{inspect manager_modules}")
