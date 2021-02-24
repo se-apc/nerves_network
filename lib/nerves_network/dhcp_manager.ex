@@ -44,8 +44,6 @@ defmodule Nerves.Network.DHCPManager do
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces()
 
-    IO.puts "+++++++++++++++ current_interfaces = #{inspect current_interfaces}"
-
     state =
       if Enum.member?(current_interfaces, ifname) do
         consume(state.context, :ifadded, state)
