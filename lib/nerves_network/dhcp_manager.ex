@@ -161,6 +161,7 @@ defmodule Nerves.Network.DHCPManager do
 
   ## Context: :dhcp
 
+
   ## covers PREINIT in Nerves.Network.Dhclientv4
   defp consume(:dhcp, :ifup, state), do: consume(:dhcp, {:ifup, :no_info}, state)
 
@@ -179,8 +180,20 @@ defmodule Nerves.Network.DHCPManager do
     |> goto_context(:up)
   end
 
+  # This event will be followed by the :leasefail, hence we want the state machine to remain in :dhcp state.
+  # The subsequent :lease fail event shall move the state-machine to the :up state.
+  defp consume(cur_state, {:timeout, info}, state) when cur_state in [:dhcp, :up] do
+    Logger.debug("(context = :dhcp) #{inspect(:timeout)} info: #{inspect(info)}")
+
+    # Let's try newest valid lease. It is an attempt to answer whether we are still connected to the same network as before.
+    state
+    |> configure(info)
+    |> deconfigure_if_gateway_not_pingable(info)
+  end
+
+
   # Yes gateway is pingable
-  defp deconfigure_if_gateway_not_pingable({_, _exit_value = 0}, state, info) do
+  defp deconfigure_if_gateway_not_pingable({_, _exit_value = 0}, state, _info) do
     Logger.debug("Gateway pingable - leaving the leased configuration...")
     Logger.debug("  state = #{inspect state}")
 
@@ -206,17 +219,6 @@ defmodule Nerves.Network.DHCPManager do
   defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) do
     System.cmd("ping", ["-c", "1", "-q", ipv4_gateway])
     |> deconfigure_if_gateway_not_pingable(state, info)
-  end
-
-  # This event will be followed by the :leasefail, hence we want the state machine to remain in :dhcp state.
-  # The subsequent :lease fail event shall move the state-machine to the :up state.
-  defp consume(cur_state, {:timeout, info}, state) when cur_state in [:dhcp, :up] do
-    Logger.debug("(context = :dhcp) #{inspect(:timeout)} info: #{inspect(info)}")
-
-    # Let's try newest valid lease. It is an attempt to answer whether we are still connected to the same network as before.
-    state
-    |> configure(info)
-    |> deconfigure_if_gateway_not_pingable(info)
   end
 
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
