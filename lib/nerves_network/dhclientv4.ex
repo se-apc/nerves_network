@@ -20,6 +20,7 @@ defmodule Nerves.Network.Dhclientv4 do
   @renew 1
   @release 2
   @terminate 3
+  @timeout 4
 
   @moduledoc """
   This module interacts with `dhclient` to interact with DHCP servers.
@@ -55,9 +56,9 @@ defmodule Nerves.Network.Dhclientv4 do
   @doc """
   Stop the dhcp client
   """
-  def stop(pid) do
+  def stop(pid, reason \\ :unknown) do
     Logger.debug("Dhclientv4.stop ipid: #{inspect(pid)}")
-    GenServer.stop(pid)
+    GenServer.stop(pid, reason)
   end
 
   defp append_ifname(input_str, ifname) do
@@ -150,14 +151,14 @@ defmodule Nerves.Network.Dhclientv4 do
         [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}]
       )
 
-    Logger.info("#{__MODULE__}: Dhclientv4 port: #{inspect(port)}; args: #{inspect(args)}")
+    Logger.info("Dhclientv4 port: #{inspect(port)}; args: #{inspect(args)}")
 
     {:ok, %{ifname: ifname, port: port, running: true}}
   end
 
   def terminate(_reason, state = %{running: true}) do
     # Send the command to our wrapper to shut everything down.
-    Logger.debug("#{__MODULE__}: terminate...")
+    Logger.debug("terminate...")
     Port.command(state.port, <<@terminate>>)
     Port.close(state.port)
     :ok
@@ -167,15 +168,28 @@ defmodule Nerves.Network.Dhclientv4 do
     :ok
   end
 
+
   def handle_call(:renew, _from, state) do
     # If we send a byte with the value 1 to the wrapper, it will turn it into
     # a SIGUSR1 for dhclient so that it renews the IP address.
+    Logger.debug(":renew")
     Port.command(state.port, <<@renew>>)
+    {:reply, :ok, state}
+  end
+
+  # A dummy handler for a :timeout call
+  def handle_call(:timeout, _from, state) do
+    Logger.debug(":timeout")
     {:reply, :ok, state}
   end
 
   def handle_call(:release, _from, state) do
     Port.command(state.port, <<@release>>)
+    {:reply, :ok, state}
+  end
+
+  def handle_call(reason, _from, state) do
+    Logger.debug("reason = #{inspect reason}; state = #{inspect state}")
     {:reply, :ok, state}
   end
 
@@ -225,6 +239,7 @@ defmodule Nerves.Network.Dhclientv4 do
   | :nak
   | :ifdown
   | :ifup
+  | :timeout
 
   @spec notify(list(), event(), map()) :: map()
   defp notify([ifname, ip, broadcast, subnet, router, domain, dns | _other_options], event, state) do
@@ -260,10 +275,11 @@ defmodule Nerves.Network.Dhclientv4 do
     {:noreply, state}
   end
 
+  # TIMEOUT event is usualy followed by the (lease)FAIL
   defp handle_dhclient([reason = "TIMEOUT" | options], state) do
     Logger.debug("dhclientv4: Received reason '#{reason}'")
 
-    notify(options, :bound, state)
+    notify(options, :timeout, state)
 
     {:noreply, state}
   end
