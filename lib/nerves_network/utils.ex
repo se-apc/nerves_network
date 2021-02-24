@@ -2,6 +2,8 @@ defmodule Nerves.Network.Utils do
   @moduledoc false
   @scope [:state, :network_interface]
 
+  use Bitwise
+
   @doc false
   def log_atomized_iface_error(ifname) when is_atom(ifname) do
     require Logger
@@ -24,6 +26,39 @@ defmodule Nerves.Network.Utils do
         v -> v
       end
     "169.254.#{x}.#{y}"
+  end
+
+  defp bits_set(bits) when bits in [1, 2, 4, 8, 16, 32, 64, 128], do: 1
+  defp bits_set(byte) when is_integer(byte) and byte >= 0 and byte <= 255 do
+    bits_set(byte &&& 128) +
+    bits_set(byte &&& 64) +
+    bits_set(byte &&& 32) +
+    bits_set(byte &&& 16) +
+    bits_set(byte &&& 8) +
+    bits_set(byte &&& 4) +
+    bits_set(byte &&& 2) +
+    bits_set(byte &&& 1)
+  end
+
+  @doc """
+  Returns `Integer - Prefix length <0..32> used in CIDR notation i.e. 10.1.1.92:24`
+
+  ## Parameters
+  - subnet_mask: i.e.: "255.255.255.0"
+
+  ## Examples
+  iex> Nerves.Network.Utils.subnet_to_prefix_len("255.255.0.0")
+  16
+
+  iex> Nerves.Network.Utils.subnet_to_prefix_len("255.255.255.0")
+  24
+
+  iex> Nerves.Network.Utils.subnet_to_prefix_len("255.255.255.128")
+  25
+  """
+  def subnet_to_prefix_len(subnet_mask) do
+    String.split(subnet_mask, ".")
+    |> Enum.reduce(0, fn byte, acc -> bits_set(String.to_integer(byte)) + acc end)
   end
 
   def scope(iface, append \\ []) do

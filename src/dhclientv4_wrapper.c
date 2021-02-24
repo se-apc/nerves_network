@@ -38,7 +38,6 @@
 
 
 #define DHCLIENT_PATH        "/sbin/dhclient"
-// #define DHCLIENT_SCRIPT_PATH "/sbin/dhclient-script" 
 
 static pid_t child_pid;
 static int   exit_pipe_fd[2];
@@ -226,7 +225,7 @@ static const char * getenv_nonull(const char * restrict key)
  * new_routers
  * new_domain_name
  * new_domain_name_servers
- * 
+ *
  * From reading /sbin/dhclient-script on NMC3 Filesystem, the following options
  * for 'reason' are outlined below:
  *
@@ -245,13 +244,13 @@ static const char * getenv_nonull(const char * restrict key)
     | FAIL     | ifdown                                           |
     | RELEASE  | ifdown                                           |
     | STOP     | ifdown                                           |
-    | TIMEOUT  | No Action -> was never tested in dhclient-script |
+    | TIMEOUT  | dhcp                                             |
     +----------+--------------------------------------------------+
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
         /* If the user tells dhclient to call this program as the script
-       (-isf script option), format and print the dhclient result nicely. */
+       (-sf script option), format and print the dhclient result nicely. */
 
     fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s,%s\n",
             getenv_nonull("reason"),
@@ -263,6 +262,10 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
             getenv_nonull("new_domain_name"),
             getenv_nonull("new_domain_name_servers")
     );
+    if(strncmp(getenv_nonull("reason"), "TIMEOUT", strlen("TIMEOUT")) == 0) {
+      debug("[%s %d]: reason = '%s'", __FILE__, __LINE__, getenv_nonull("reason"));
+      exit(2); /* Number 2 taken from /sbin/dhclient-script */
+    }
 }
 
 int main(int argc, char *argv[])

@@ -161,6 +161,7 @@ defmodule Nerves.Network.DHCPManager do
 
   ## Context: :dhcp
 
+
   ## covers PREINIT in Nerves.Network.Dhclientv4
   defp consume(:dhcp, :ifup, state), do: consume(:dhcp, {:ifup, :no_info}, state)
 
@@ -177,6 +178,47 @@ defmodule Nerves.Network.DHCPManager do
     state
     |> configure(info)
     |> goto_context(:up)
+  end
+
+  # This event will be followed by the :leasefail, hence we want the state machine to remain in :dhcp state.
+  # The subsequent :lease fail event shall move the state-machine to the :up state.
+  defp consume(cur_state, {:timeout, info}, state) when cur_state in [:dhcp, :up] do
+    Logger.debug("(context = :dhcp) #{inspect(:timeout)} info: #{inspect(info)}")
+
+    # Let's try newest valid lease. It is an attempt to answer whether we are still connected to the same network as before.
+    state
+    |> configure(info)
+    |> deconfigure_if_gateway_not_pingable(info)
+  end
+
+
+  # Yes gateway is pingable
+  defp deconfigure_if_gateway_not_pingable({_, _exit_value = 0}, state, _info) do
+    Logger.debug("Gateway pingable - leaving the leased configuration...")
+    Logger.debug("  state = #{inspect state}")
+
+    state
+    |> goto_context(:dhcp)
+  end
+
+  defp deconfigure_if_gateway_not_pingable({_, _exit_value}, state, info) do
+    Logger.debug("Gateway unpingable - deconfiguring interface #{state.ifname}...")
+
+    %{ipv4_address: ipv4_address, ipv4_subnet_mask: subnet_mask} = info
+
+    Logger.debug("  ipv4_address = #{ipv4_address}")
+    Logger.debug("  state = #{inspect state}")
+
+    prefix_len = Nerves.Network.Utils.subnet_to_prefix_len(subnet_mask)
+    Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{ipv4_address}:#{prefix_len}"})
+
+    state
+    |> goto_context(:dhcp)
+  end
+
+  defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) do
+    System.cmd("ping", ["-c", "1", "-q", ipv4_gateway])
+    |> deconfigure_if_gateway_not_pingable(state, info)
   end
 
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
@@ -269,21 +311,18 @@ defmodule Nerves.Network.DHCPManager do
   ## not related to Nerves.Network.Dhclientv4.
   defp consume(:down, :ifadded, state), do: state
 
-  defp consume(:down, :ifremoved, state) do
+  defp consume(:down, reason = :ifremoved, state) do
     state
-    |> stop_dhclient
+    |> stop_dhclient(reason)
     |> goto_context(:removed)
   end
 
   ## Neither of these should be called. Not related to Nerves.Network.Dhclientv4.
   defp consume(:dhcp, {:deconfig, _info}, state), do: state
 
-  defp consume(:dhcp, {:leasefail, _info}, state) do
-    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
-
-    %{state | dhcp_retry_timer: dhcp_retry_timer}
-    |> stop_dhclient
-    |> start_link_local
+  defp consume(:dhcp, {_reason = :leasefail, _info}, state) do
+    state
+    |> start_link_local() # Let's configure the link-local 169.254.x.y address
     |> goto_context(:up)
   end
 
@@ -306,9 +345,9 @@ defmodule Nerves.Network.DHCPManager do
     state
   end
 
-  defp stop_dhclient(state) do
+  defp stop_dhclient(state, reason \\ :unknown) do
     if is_pid(state.dhcp_pid) do
-      Nerves.Network.Dhclientv4.stop(state.dhcp_pid)
+      Nerves.Network.Dhclientv4.stop(state.dhcp_pid, reason)
       %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
     else
       state
@@ -352,6 +391,7 @@ defmodule Nerves.Network.DHCPManager do
     new_ip = info[:ipv4_address] || ""
 
     if old_ip == "" or new_ip == old_ip do
+      Logger.debug("Doing nothing old_ip = #{old_ip}; new_ip = #{new_ip}")
       :ok
     else
       Logger.debug("Removing ipv4 address = #{inspect(old_ip)} from #{inspect(state.ifname)}")
@@ -373,7 +413,7 @@ defmodule Nerves.Network.DHCPManager do
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
 
     # Show that the route has been updated
-    System.cmd("route", []) |> elem(0) |> Logger.debug()
+    System.cmd("ip", ["route", "show", "dev", state.ifname]) |> elem(0) |> Logger.debug()
     state
   end
 
