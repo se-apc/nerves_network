@@ -212,7 +212,7 @@ defmodule Nerves.Network.DHCPManager do
 
   # This event will be followed by the :leasefail, hence we want the state machine to remain in :dhcp state.
   # The subsequent :lease fail event shall move the state-machine to the :up state.
-  defp consume(:dhcp, {:timeout, info}, state) do
+  defp consume(cur_state, {:timeout, info}, state) when cur_state in [:dhcp, :up] do
     Logger.debug("(context = :dhcp) #{inspect(:timeout)} info: #{inspect(info)}")
 
     # Let's try newest valid lease. It is an attempt to asnwer whether we are still connected to the same network as before.
