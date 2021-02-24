@@ -1,10 +1,10 @@
 %{
-  "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm"},
-  "earmark": {:hex, :earmark, "1.2.3", "206eb2e2ac1a794aa5256f3982de7a76bf4579ff91cb28d0e17ea2c9491e46a4", [:mix], [], "hexpm"},
-  "elixir_make": {:hex, :elixir_make, "0.6.0", "38349f3e29aff4864352084fc736fa7fa0f2995a819a737554f7ebd28b85aaab", [:mix], [], "hexpm"},
-  "ex_doc": {:hex, :ex_doc, "0.16.2", "3b3e210ebcd85a7c76b4e73f85c5640c011d2a0b2f06dcdf5acdb2ae904e5084", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
-  "muontrap": {:hex, :muontrap, "0.3.1", "c157f5367b73f39efd2cf12da0ac55b8454add1798f35a1d763a6bdb3ae70e31", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
-  "nerves_network_interface": {:hex, :nerves_network_interface, "0.4.6", "d50e57daca8154f0f780fd98eb5ae94a005579e0d72d69840e80e228375d88ad", [:make, :mix], [{:elixir_make, "~> 0.5", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
-  "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.2", "19dc7e1248336e7f542b11b2b857ceb5b088d3eb41a6ca75b7b76628dcf67aad", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
-  "system_registry": {:hex, :system_registry, "0.4.0", "d8a7267005418efd8291df327153ae6f11badcb7a8827dd00ed59dc9abb3f9a6", [:mix], [], "hexpm"},
+  "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm", "6c32a70ed5d452c6650916555b1f96c79af5fc4bf286997f8b15f213de786f73"},
+  "earmark": {:hex, :earmark, "1.2.3", "206eb2e2ac1a794aa5256f3982de7a76bf4579ff91cb28d0e17ea2c9491e46a4", [:mix], [], "hexpm", "3b1dcad3067985dd8618c38399a8ee9c4e652d52a17a4aae7a6d6fc4fcc24856"},
+  "elixir_make": {:hex, :elixir_make, "0.6.2", "7dffacd77dec4c37b39af867cedaabb0b59f6a871f89722c25b28fcd4bd70530", [:mix], [], "hexpm", "03e49eadda22526a7e5279d53321d1cced6552f344ba4e03e619063de75348d9"},
+  "ex_doc": {:hex, :ex_doc, "0.16.2", "3b3e210ebcd85a7c76b4e73f85c5640c011d2a0b2f06dcdf5acdb2ae904e5084", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm", "b6fb4aef8125c62e6b6a7d7507eff70f376a7050c7745af11f08333ea9beebd3"},
+  "muontrap": {:hex, :muontrap, "0.3.1", "c157f5367b73f39efd2cf12da0ac55b8454add1798f35a1d763a6bdb3ae70e31", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "72c7d6847ffd7237099fb30cb5282a1f85fc24b60e5e135acb1b1302a9b289ca"},
+  "nerves_network_interface": {:git, "https://github.com/se-apc/nerves_network_interface.git", "e862a07ac97551af5adb4bad8526f053bcf2e115", [branch: "master"]},
+  "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.2", "19dc7e1248336e7f542b11b2b857ceb5b088d3eb41a6ca75b7b76628dcf67aad", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "db9c62daa5bb3d3240b77d0ac0875177e32c3598ef1ecc5c6ec6c031ddabd504"},
+  "system_registry": {:hex, :system_registry, "0.4.0", "d8a7267005418efd8291df327153ae6f11badcb7a8827dd00ed59dc9abb3f9a6", [:mix], [], "hexpm", "991844b4da8d9a793d424d6574a9559ac5987c99240d994f605b9ced387d8ab4"},
 }
