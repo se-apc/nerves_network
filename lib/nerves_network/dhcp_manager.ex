@@ -217,7 +217,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) do
-    System.cmd("ping", ["-c", "1", "-q", ipv4_gateway])
+    System.cmd("ping", ["-c", "1", "-q", "-t", "1", ipv4_gateway])
     |> deconfigure_if_gateway_not_pingable(state, info)
   end
 
