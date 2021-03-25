@@ -42,6 +42,8 @@ defmodule Nerves.Network.Mixfile do
       {:system_registry, "~> 0.4"},
       {:nerves_network_interface, github: "se-apc/nerves_network_interface", branch: "master", override: true},
       {:nerves_wpa_supplicant, "~> 0.3.0"},
+      {:gen_icmp, git: "https://github.com/msantos/gen_icmp.git", branch: "master"},
+      {:pkt, git: "https://github.com/msantos/pkt.git", branch: "master"},
       {:elixir_make, "~> 0.4", runtime: false},
       {:ex_doc, "~> 0.11", only: :dev},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
