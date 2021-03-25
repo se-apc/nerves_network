@@ -193,7 +193,7 @@ defmodule Nerves.Network.DHCPManager do
 
 
   # Yes gateway is pingable
-  defp deconfigure_if_gateway_not_pingable({_, _exit_value = 0}, state, _info) do
+  defp deconfigure_if_gateway_not_pingable({:ok, _host, _address, _reply_addr, _details, _payload}, state, _info) do
     Logger.debug("Gateway pingable - leaving the leased configuration...")
     Logger.debug("  state = #{inspect state}")
 
@@ -201,7 +201,7 @@ defmodule Nerves.Network.DHCPManager do
     |> goto_context(:dhcp)
   end
 
-  defp deconfigure_if_gateway_not_pingable({_, _exit_value}, state, info) do
+  defp deconfigure_if_gateway_not_pingable(_, state, info) do
     Logger.debug("Gateway unpingable - deconfiguring interface #{state.ifname}...")
 
     %{ipv4_address: ipv4_address, ipv4_subnet_mask: subnet_mask} = info
@@ -216,8 +216,12 @@ defmodule Nerves.Network.DHCPManager do
     |> goto_context(:dhcp)
   end
 
-  defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) do
-    System.cmd("ping", ["-c", "1", "-q", "-t", "1", ipv4_gateway])
+  defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) when is_binary(ipv4_gateway) do
+    ipv4_gateway
+    |> to_charlist()
+    |> :inet.parse_address()
+    |> :gen_icmp.ping([ttl: 1, timeout: 3000, timestamp: false])
+    |> Enum.at(0, {:error, :unknown})
     |> deconfigure_if_gateway_not_pingable(state, info)
   end
 
