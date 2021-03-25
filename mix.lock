@@ -3,8 +3,11 @@
   "earmark": {:hex, :earmark, "1.2.3", "206eb2e2ac1a794aa5256f3982de7a76bf4579ff91cb28d0e17ea2c9491e46a4", [:mix], [], "hexpm", "3b1dcad3067985dd8618c38399a8ee9c4e652d52a17a4aae7a6d6fc4fcc24856"},
   "elixir_make": {:hex, :elixir_make, "0.6.2", "7dffacd77dec4c37b39af867cedaabb0b59f6a871f89722c25b28fcd4bd70530", [:mix], [], "hexpm", "03e49eadda22526a7e5279d53321d1cced6552f344ba4e03e619063de75348d9"},
   "ex_doc": {:hex, :ex_doc, "0.16.2", "3b3e210ebcd85a7c76b4e73f85c5640c011d2a0b2f06dcdf5acdb2ae904e5084", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm", "b6fb4aef8125c62e6b6a7d7507eff70f376a7050c7745af11f08333ea9beebd3"},
+  "gen_icmp": {:git, "https://github.com/msantos/gen_icmp.git", "837fc46b25b36f6c61d353494bbfa3eafce18942", [branch: "master"]},
   "muontrap": {:hex, :muontrap, "0.3.1", "c157f5367b73f39efd2cf12da0ac55b8454add1798f35a1d763a6bdb3ae70e31", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "72c7d6847ffd7237099fb30cb5282a1f85fc24b60e5e135acb1b1302a9b289ca"},
   "nerves_network_interface": {:git, "https://github.com/se-apc/nerves_network_interface.git", "e862a07ac97551af5adb4bad8526f053bcf2e115", [branch: "master"]},
   "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.3", "91b8505c023e891561ac6c64b9955450aa67fb16b523b18db5eeb4b4bcf30dc7", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "beeeef35861438a7203d76b1b8104d3902ebcd7fe1b1f455b2383b286259fe7d"},
+  "pkt": {:git, "git://github.com/msantos/pkt.git", "db7dec36a84484125bfeb4e148ec551cbc2e8997", [ref: "db7dec36a84484125bfeb4e148ec551cbc2e8997"]},
+  "procket": {:git, "git://github.com/msantos/procket.git", "7679c1a1205c3ea5b6d2a7ad6f8daf6c691b3301", [ref: "7679c1a1205c3ea5b6d2a7ad6f8daf6c691b3301"]},
   "system_registry": {:hex, :system_registry, "0.4.0", "d8a7267005418efd8291df327153ae6f11badcb7a8827dd00ed59dc9abb3f9a6", [:mix], [], "hexpm", "991844b4da8d9a793d424d6574a9559ac5987c99240d994f605b9ced387d8ab4"},
 }
