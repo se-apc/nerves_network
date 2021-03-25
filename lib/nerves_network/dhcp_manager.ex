@@ -219,7 +219,6 @@ defmodule Nerves.Network.DHCPManager do
   defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) when is_binary(ipv4_gateway) do
     ipv4_gateway
     |> to_charlist()
-    |> :inet.parse_address()
     |> :gen_icmp.ping([ttl: 1, timeout: 3000, timestamp: false])
     |> Enum.at(0, {:error, :unknown})
     |> deconfigure_if_gateway_not_pingable(state, info)
