@@ -57,7 +57,7 @@ defmodule Nerves.Network.Utils do
   25
 
   iex> Nerves.Network.Utils.subnet_to_prefix_len("")
-  32
+  0
   """
   def subnet_to_prefix_len(""), do: 0
   def subnet_to_prefix_len(subnet_mask) do
