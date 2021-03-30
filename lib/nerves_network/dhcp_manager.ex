@@ -193,7 +193,7 @@ defmodule Nerves.Network.DHCPManager do
 
 
   # Yes gateway is pingable
-  defp deconfigure_if_gateway_not_pingable({:ok, _host, _address, _reply_addr, _details, _payload}, state, _info) do
+  def deconfigure_if_gateway_not_pingable({:ok, _host, _address, _reply_addr, _details, _payload}, state, _info) do
     Logger.debug("Gateway pingable - leaving the leased configuration...")
     Logger.debug("  state = #{inspect state}")
 
@@ -201,22 +201,47 @@ defmodule Nerves.Network.DHCPManager do
     |> goto_context(:dhcp)
   end
 
-  defp deconfigure_if_gateway_not_pingable(_, state, info) do
+  # When the netmask is empty (no such entry in the leases DB fetch the netmask information directly from
+  # network interface
+  defp obtain_prefix_len(ifname, _subnet_mask = "") do
+    %{ipv4_subnet_mask: subnet_mask} = Nerves.NetworkInterface.settings(ifname)
+
+    subnet_mask
+    |> Nerves.Network.Utils.subnet_to_prefix_len()
+  end
+
+  defp obtain_prefix_len(subnet_mask) do
+    subnet_mask
+    |> Nerves.Network.Utils.subnet_to_prefix_len()
+  end
+
+  # When there's no entry of leased  ipv4_address in the leases DB fetch the address information directly from
+  # the network interface
+  defp obtain_ipv4_address(ifname, _ipv4_address = "") do
+    %{ipv4_address: address} = Nerves.NetworkInterface.settings(ifname)
+
+    address
+  end
+
+  defp obtain_ipv4_address(address) do
+    address
+  end
+
+  def deconfigure_if_gateway_not_pingable(_, state, info) do
     Logger.debug("Gateway unpingable - deconfiguring interface #{state.ifname}...")
 
     %{ipv4_address: ipv4_address, ipv4_subnet_mask: subnet_mask} = info
 
-    Logger.debug("  ipv4_address = #{ipv4_address}")
-    Logger.debug("  state = #{inspect state}")
+    prefix_len = obtain_prefix_len(state.ifname, subnet_mask)
+    address    = obtain_ipv4_address(state.ifname, subnet_mask)
 
-    prefix_len = Nerves.Network.Utils.subnet_to_prefix_len(subnet_mask)
-    Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{ipv4_address}:#{prefix_len}"})
+    Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{address}:#{prefix_len}"})
 
     state
     |> goto_context(:dhcp)
   end
 
-  defp deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) when is_binary(ipv4_gateway) do
+  def deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) when is_binary(ipv4_gateway) do
     ipv4_gateway
     |> to_charlist()
     |> :gen_icmp.ping([ttl: 1, timeout: 3000, timestamp: false])
