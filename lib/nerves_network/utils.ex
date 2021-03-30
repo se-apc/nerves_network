@@ -55,7 +55,11 @@ defmodule Nerves.Network.Utils do
 
   iex> Nerves.Network.Utils.subnet_to_prefix_len("255.255.255.128")
   25
+
+  iex> Nerves.Network.Utils.subnet_to_prefix_len("")
+  32
   """
+  def subnet_to_prefix_len(""), do: 0
   def subnet_to_prefix_len(subnet_mask) do
     String.split(subnet_mask, ".")
     |> Enum.reduce(0, fn byte, acc -> bits_set(String.to_integer(byte)) + acc end)
