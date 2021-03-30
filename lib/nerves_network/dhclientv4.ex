@@ -276,7 +276,7 @@ defmodule Nerves.Network.Dhclientv4 do
 
   # TIMEOUT event is usually followed by the (lease)FAIL
   defp handle_dhclient([reason = "TIMEOUT" | options], state) do
-    Logger.debug("dhclientv4: Received reason '#{reason}'")
+    Logger.debug("dhclientv4: Received reason '#{reason}' options = #{inspect options}")
 
     notify(options, :timeout, state)
 
