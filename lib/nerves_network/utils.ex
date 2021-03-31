@@ -28,6 +28,7 @@ defmodule Nerves.Network.Utils do
     "169.254.#{x}.#{y}"
   end
 
+  defp bits_set(0), do: 0
   defp bits_set(bits) when bits in [1, 2, 4, 8, 16, 32, 64, 128], do: 1
   defp bits_set(byte) when is_integer(byte) and byte >= 0 and byte <= 255 do
     bits_set(byte &&& 128) +
