@@ -393,10 +393,8 @@ defmodule Nerves.Network.DHCPManager do
 
   defp start_link_local(state) do
     with {:ok, ifstatus} <- Nerves.NetworkInterface.status(state.ifname),
-         :ok <- Nerves.NetworkInterface.setup(state.ifname, ipv4_address: ip),
+         :ok <- Nerves.NetworkInterface.setup(state.ifname, ipv4_address: ip = generate_link_local(ifstatus.mac_address)),
          {:ok, settings} <- Nerves.NetworkInterface.settings(state.ifname) do
-
-      ip = generate_link_local(ifstatus.mac_address)
 
       scope(state.ifname)
       |> SystemRegistry.update(%{ipv4_address: ip})
