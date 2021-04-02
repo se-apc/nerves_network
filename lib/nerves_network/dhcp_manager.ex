@@ -392,13 +392,19 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp start_link_local(state) do
-    {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
-    ip = generate_link_local(ifsettings.mac_address)
+    {:ok, ifstatus} = Nerves.NetworkInterface.status(state.ifname)
+    ip = generate_link_local(ifstatus.mac_address)
 
     scope(state.ifname)
     |> SystemRegistry.update(%{ipv4_address: ip})
 
     :ok = Nerves.NetworkInterface.setup(state.ifname, ipv4_address: ip)
+
+    {:ok, settings} = Nerves.NetworkInterface.settings(state.ifname)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, Map.put(settings, :ifname, state.ifname))
+
+    Logger.info("Notifying of link-local: #{inspect settings}")
+
     state
   end
 
