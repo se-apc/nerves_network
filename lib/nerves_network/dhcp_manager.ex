@@ -402,7 +402,7 @@ defmodule Nerves.Network.DHCPManager do
       Logger.info("Notifying of link-local: #{inspect settings}")
       notify(Nerves.NetworkInterface, state.ifname, :ifchanged, Map.put(settings, :ifname, state.ifname))
     else
-      err -> Logger.error("Error while notifying about lnk-local #{inspect err}")
+      err -> Logger.error("Error while notifying about link-local #{inspect err}")
     end
 
     state
