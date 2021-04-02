@@ -398,12 +398,13 @@ defmodule Nerves.Network.DHCPManager do
     scope(state.ifname)
     |> SystemRegistry.update(%{ipv4_address: ip})
 
-    :ok = Nerves.NetworkInterface.setup(state.ifname, ipv4_address: ip)
-
-    {:ok, settings} = Nerves.NetworkInterface.settings(state.ifname)
-    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, Map.put(settings, :ifname, state.ifname))
-
-    Logger.info("Notifying of link-local: #{inspect settings}")
+    with :ok <- Nerves.NetworkInterface.setup(state.ifname, ipv4_address: ip),
+        {:ok, settings} <- Nerves.NetworkInterface.settings(state.ifname) do
+      Logger.info("Notifying of link-local: #{inspect settings}")
+      notify(Nerves.NetworkInterface, state.ifname, :ifchanged, Map.put(settings, :ifname, state.ifname))
+    else
+      err -> Logger.error("Error while notifying about lnk-local #{inspect err}")
+    end
 
     state
   end
