@@ -145,11 +145,18 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## covers BOUND, REBOOT, RENEW, REBIND in Nerves.Network.Dhclientv4.
-  defp consume(:down, {event, _info}, state) when event in [:bound, :reboot, :renew, :rebind],
-    do: state
+  defp consume(:down, {event, _info}, state) when event in [:bound, :reboot, :renew, :rebind] do
+    Logger.debug(":down, {event = #{inspect event}, _info}; state = #{inspect state}")
+
+    state
+  end
 
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
-  defp consume(:down, :ifdown, state), do: consume(:down, {:ifdown, :no_info}, state)
+  defp consume(:down, :ifdown, state) do
+    Logger.debug(":down, :ifdown, state = #{inspect state}")
+
+    consume(:down, {:ifdown, :no_info}, state)
+  end
 
   defp consume(:down, {:ifdown, info}, state) do
     Logger.debug("(context = :down) :ifdown info: #{inspect(info)} state = #{inspect(state)}")
@@ -167,6 +174,7 @@ defmodule Nerves.Network.DHCPManager do
 
   defp consume(:dhcp, {:ifup, info}, state) do
     Logger.debug("(context = :dhcp) :ifup info: #{inspect(info)}")
+
     state
   end
 
@@ -253,7 +261,11 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
-  defp consume(:dhcp, :ifdown, state), do: consume(:dhcp, {:ifdown, :no_info}, state)
+  defp consume(:dhcp, :ifdown, state) do
+    Logger.debug(":dhcp, :ifdown istate = #{inspect state}")
+
+    consume(:dhcp, {:ifdown, :no_info}, state)
+  end
 
   defp consume(:dhcp, {:ifdown, info}, state) do
     Logger.debug("(context = :dhcp) :ifdown info: #{inspect(info)}")
@@ -424,16 +436,26 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp remove_old_ip(state, info) do
-    old_ip = info[:old_ipv4_address] || ""
     new_ip = info[:ipv4_address] || ""
 
-    if old_ip == "" or new_ip == old_ip do
-      Logger.debug("Doing nothing old_ip = #{old_ip}; new_ip = #{new_ip}")
-      :ok
+    Logger.debug("info = @{inspect info}")
+
+    # It appears that on events like EXPIRE there is not old IP address being sent withing the 'info' parameter
+    with {:ok, %{:ipv4_address => old_ip, :ipv4_subnet_mask => subnet_mask}} <- Nerves.NetworkInterface.settings(state.ifname) do
+      if old_ip == "" or new_ip == old_ip do
+        Logger.debug("Doing nothing old_ip = #{old_ip}; new_ip = #{new_ip}")
+       :ok
+     else
+        Logger.debug("Removing ipv4 address = #{inspect(old_ip)} from #{inspect(state.ifname)}")
+
+        prefix_len = obtain_prefix_len(state.ifname, subnet_mask) |> to_string()
+        Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{old_ip}:#{prefix_len}"})
+      end
     else
-      Logger.debug("Removing ipv4 address = #{inspect(old_ip)} from #{inspect(state.ifname)}")
-      Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => old_ip})
+      err -> Logger.warn("Unable to fetch settings for #{inspect info[:ifname]} err = #{inspect err}")
     end
+
+    :ok
   end
 
   defp configure(:no_resolv_conf, state, info) do
