@@ -441,7 +441,7 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug("info = @{inspect info}")
 
     # It appears that on events like EXPIRE there is not old IP address being sent withing the 'info' parameter
-    with {:ok, %{:ipv4_address => old_ip, :ipv4_subnet_mask => subnet_mask}} <- Nerves.NetworkInterface.settings(info[:ifname]) do
+    with {:ok, %{:ipv4_address => old_ip, :ipv4_subnet_mask => subnet_mask}} <- Nerves.NetworkInterface.settings(state.ifname) do
       if old_ip == "" or new_ip == old_ip do
         Logger.debug("Doing nothing old_ip = #{old_ip}; new_ip = #{new_ip}")
        :ok
