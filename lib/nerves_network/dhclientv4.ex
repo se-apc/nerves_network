@@ -42,6 +42,7 @@ defmodule Nerves.Network.Dhclientv4 do
   from the interface so that packets don't accidentally get sent or processed.
   """
   def release(pid) do
+    Logger.debug(":release")
     GenServer.call(pid, :release)
   end
 
@@ -49,6 +50,7 @@ defmodule Nerves.Network.Dhclientv4 do
   Renew the lease on the IP address with the DHCP server.
   """
   def renew(pid) do
+    Logger.debug(":renew")
     GenServer.call(pid, :renew)
   end
 
@@ -56,7 +58,7 @@ defmodule Nerves.Network.Dhclientv4 do
   Stop the dhcp client
   """
   def stop(pid, reason \\ :unknown) do
-    Logger.debug("Dhclientv4.stop ipid: #{inspect(pid)}")
+    Logger.debug("Dhclientv4.stop pid: #{inspect(pid)}")
     GenServer.stop(pid, reason)
   end
 
@@ -101,7 +103,7 @@ defmodule Nerves.Network.Dhclientv4 do
   defp dhclient_runtime(ifname) do
     runtime = runtime()
 
-    Logger.debug("#{__MODULE__}: runtime options = #{inspect(runtime)}")
+    Logger.debug("runtime options = #{inspect(runtime)}")
 
     runtime_lease_file(ifname, runtime)
       ++ runtime_pid_file(ifname, runtime)
@@ -117,7 +119,7 @@ defmodule Nerves.Network.Dhclientv4 do
     {ifname, mode} = args
 
     Logger.info(
-      "#{__MODULE__}: Starting Dhclientv4 wrapper for ifname: #{inspect(ifname)} mode: #{
+      "Starting Dhclientv4 wrapper for ifname: #{inspect(ifname)} mode: #{
         inspect(mode)
       }"
     )
