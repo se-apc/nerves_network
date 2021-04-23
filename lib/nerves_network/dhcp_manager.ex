@@ -98,8 +98,13 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug("handle_info: ifstate = #{inspect(ifstate)}")
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
+
+    Logger.debug("Calling consume #{inspect s.context}; event = ${inspect event} state = #{inspect s}")
+
     s = consume(s.context, event, s)
+
     Logger.debug("DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect(event)}")
+
     {:noreply, s}
   end
 
@@ -162,7 +167,7 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug("(context = :down) :ifdown info: #{inspect(info)} state = #{inspect(state)}")
 
     state
-    |> stop_dhclient
+    |> stop_dhclient(:ifdown)
     |> deconfigure
   end
 
@@ -271,7 +276,7 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug("(context = :dhcp) :ifdown info: #{inspect(info)}")
 
     state
-    |> stop_dhclient
+    |> stop_dhclient(:ifdown)
     |> goto_context(:down)
   end
 
@@ -289,7 +294,7 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug("(context = :up) :ifdown info: #{inspect(info)}")
 
     state
-    |> stop_dhclient
+    |> stop_dhclient(:ifdown)
     |> deconfigure
     |> goto_context(:down)
   end
@@ -388,7 +393,9 @@ defmodule Nerves.Network.DHCPManager do
     state
   end
 
-  defp stop_dhclient(state, reason \\ :unknown) do
+  def stop_dhclient(state, reason \\ :unknown) do
+    Logger.debug("reason = #{inspect reason} ; state = #{inspect state}")
+
     if is_pid(state.dhcp_pid) do
       Nerves.Network.Dhclientv4.stop(state.dhcp_pid, reason)
       %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
@@ -397,8 +404,8 @@ defmodule Nerves.Network.DHCPManager do
     end
   end
 
-  defp start_dhclient(state) do
-    state = stop_dhclient(state)
+  def start_dhclient(state) do
+    state = stop_dhclient(state, :init)
     {:ok, pid} = Nerves.Network.Dhclientv4.start_link({state.ifname, state.settings[:ipv4_dhcp]})
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
   end
