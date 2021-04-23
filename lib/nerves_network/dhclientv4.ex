@@ -54,12 +54,24 @@ defmodule Nerves.Network.Dhclientv4 do
     GenServer.call(pid, :renew)
   end
 
+  defp do_stop(nil, pid, reason) do
+    Logger.debug("No such process #{inspect pid}; reason = #{inspect reason}")
+  end
+
+  defp do_stop(pinfo, pid, reason) do
+    Logger.debug("Process info = #{inspect pinfo}; pid = #{inspect pid}; reason = #{inspect reason}")
+
+    GenServer.stop(pid, reason)
+  end
+
   @doc """
   Stop the dhcp client
   """
   def stop(pid, reason \\ :unknown) do
-    Logger.debug("Dhclientv4.stop pid: #{inspect(pid)}")
-    GenServer.stop(pid, reason)
+    Logger.debug("Dhclientv4.stop pid: #{inspect(pid)}; reason = #{inspect reason}")
+
+    Process.info(pid)
+    |> do_stop(pid, reason)
   end
 
   defp append_ifname(input_str, ifname) do
@@ -171,10 +183,8 @@ defmodule Nerves.Network.Dhclientv4 do
 
 
   def handle_call(:renew, _from, state) do
-    # If we send a byte with the value 1 to the wrapper, it will turn it into
-    # a SIGUSR1 for dhclient so that it renews the IP address.
     Logger.debug(":renew")
-    Port.command(state.port, <<@renew>>)
+
     {:reply, :ok, state}
   end
 
@@ -206,15 +216,6 @@ defmodule Nerves.Network.Dhclientv4 do
   def handle_info({_, {:data, {:eol, message}}}, state) do
     handle(message, state)
   end
-
-  # def handle(message, state) do
-  #   Logger.debug "This is message: #{inspect message}"
-  #   message_s = List.to_string(message)
-  #   Logger.debug "This is message_s: #{inspect message_s}"
-  #   message_l = String.split(message_s, ",")
-  #   Logger.debug "This is message_l: #{inspect message_l}"
-  #   handle_dhclient(message_l, state)
-  # end
 
   def handle(message, state) do
     message
