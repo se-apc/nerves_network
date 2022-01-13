@@ -107,38 +107,6 @@ defmodule Nerves.Network.EAPoLManager do
     File.write(wpa_config_file(state), wpa_conf_contents(state))
   end
 
-  #  defp wait_for_disconnect(state = %{status: :disconnected}) do
-  #    Logger.debug("Disconnected...")
-  #    %{state | status: :ready}
-  #  end
-
-  #  defp wait_for_disconnect(state = %{status: :disconnecting}) do
-  #    Logger.debug("Wait for disconnected...")
-  #
-  #    :timer.sleep 111
-  #    GenServer.call(self(), :wait_for_disconnect)
-  #  end
-  #
-  defp wait_for_disconnect(state = %{status: :disconnecting}) do
-    receive do
-      {:disconnected, pid} ->
-        Logger.info("Got dsoconnected #{inspect pid}")
-        %{state | status: :disconnected}
-      after
-        3_333 ->
-          Logger.warn("Haven't received disconnect control even!")
-          state
-    end
-  end
-
-  defp wait_for_disconnect(state = %{status: _}) do
-    # We shal de-register the listener to WpaSupplicant's events
-
-    %{state | status: :ready}
-  end
-
-
-
   @spec wpa_control_pipe(t()) :: String.t()
   defp wpa_control_pipe(state) do
     @wpa_control_path <> "/#{state.ifname}"
@@ -200,7 +168,7 @@ defmodule Nerves.Network.EAPoLManager do
 
   # args =
   #  %{
-  #  :ssid => "nmc-eapol",
+  #  :ssid => "eth0-eapol",
   #  :identity => "user@example.org",
   #  :ca_cert => "/var/system/pub/eapol/ca.pem",
   #  :client_cert => "/var/system/pub/eapol/user@example.org.pem",
