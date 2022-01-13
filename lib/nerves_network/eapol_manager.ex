@@ -26,12 +26,6 @@ defmodule Nerves.Network.EAPoLManager do
     wpa_pid: GenServer.server | nil,
   }
 
-  #  defstruct context: :removed,
-  #            ifname: nil,
-  #            settings: nil,
-  #            dhcp_pid: nil,
-  #            wpa_pid: nil
-
   # The following are Nerves locations of the supplicant. If not using
   # Nerves, these may be different.
   @wpa_supplicant_path    "/usr/sbin/wpa_supplicant"
@@ -193,8 +187,6 @@ defmodule Nerves.Network.EAPoLManager do
   def handle_info(event = {Nerves.WpaSupplicant, {id, message}, %{ifname: ifname}}, s) do
     Logger.info("Forwarding event = #{inspect event}")
 
-    #registry_name = String.to_atom(to_string(__MODULE__) <> ".#{s.ifname}")
-
     Utils.notify(__MODULE__, ifname, {id, message}, %{ifname: ifname})
     {:noreply, s}
   end
@@ -202,6 +194,7 @@ defmodule Nerves.Network.EAPoLManager do
   # ignoring event: {Nerves.WpaSupplicant, {:"CTRL-EVENT-EAP-FAILURE", "EAP authentication failed"}, %{ifname: "eth0"}}
   def handle_info(event, s) do
     Logger.info "{s.ifname}): ignoring event: #{inspect event}"
+
     {:noreply, s}
   end
 end
