@@ -9,8 +9,8 @@ defmodule Nerves.Network.EAPoLManager do
   """
 
   use GenServer
-  import Nerves.Network.Utils
   alias Nerves.Network.Types
+  alias Nerves.Network.Utils
 
   require EEx
   require Logger
@@ -23,7 +23,7 @@ defmodule Nerves.Network.EAPoLManager do
     ifname: Types.ifname | nil,
     settings: Nerves.Network.setup_settings | nil,
     dhcp_pid: GenServer.server | nil,
-    wpa_pid: GenServer.server | nil
+    wpa_pid: GenServer.server | nil,
   }
 
   #  defstruct context: :removed,
@@ -51,21 +51,10 @@ defmodule Nerves.Network.EAPoLManager do
 
     # Register for nerves_network_interface events and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
-    #{:ok, _} = Registry.register(Nerves.Network.Dhclientv4, ifname, [])
-    #{:ok, _} = Registry.register(Nerves.Network.Dhclient, ifname, [])
+    Registry.start_link(keys: :duplicate, name: __MODULE__)
 
     Logger.info "Done Registering"
     state = %{settings: settings, ifname: ifname, wpa_pid: nil, wpa_ctrl_iface: @wpa_control_path}
-
-    # If the interface currently exists send ourselves a message that it
-    # was added to get things going.
-    #current_interfaces = Nerves.NetworkInterface.interfaces()
-    #state =
-    #  if Enum.member?(current_interfaces, ifname) do
-    #    consume(state.context, :ifadded, state)
-    #  else
-    #    state
-    #  end
 
     {:ok, state}
   end
@@ -74,34 +63,21 @@ defmodule Nerves.Network.EAPoLManager do
   def stop_wpa(state) do
     if is_pid(state.wpa_pid) do
       Nerves.WpaSupplicant.stop(state.wpa_pid)
+
+      if(Registry.count(Nerves.WpaSupplicant) > 0) do
+        Logger.debug("Unregistering Nerves.WpaSupplicant...")
+        _ = Registry.unregister(Nerves.WpaSupplicant, state.ifname)
+      end
+
+      # A grace priod for the OS to clean after wpa_supplicant process
+      :timer.sleep 250
       %{state | wpa_pid: nil}
     else
+      Logger.warn "state.wpa_pid not pid!"
       state
     end
   end
 
-  defp parse_settings(settings) when is_list(settings) do
-    settings
-    |> Map.new()
-    |> parse_settings()
-  end
-
-  defp parse_settings(settings = %{ key_mgmt: key_mgmt }) when is_binary(key_mgmt) do
-    %{ settings | key_mgmt: String.to_atom(key_mgmt) }
-    |> parse_settings()
-  end
-
-  # Detect when the use specifies no WiFi security but supplies a
-  # key anyway. This confuses wpa_supplicant and causes the failure
-  # described in #39.
-  defp parse_settings(settings = %{ key_mgmt: :NONE, psk: _psk }) do
-    Map.delete(settings, :psk)
-    |> parse_settings
-  end
-
-  defp parse_settings(settings), do: settings
-
-  #    ctrl_interface=DIR=<%= @wpa_ctrl_iface %> GROUP=wheel
   def wpa_conf_contents(state) do
     """
     ctrl_interface=DIR=<%= @wpa_ctrl_iface %>
@@ -131,6 +107,37 @@ defmodule Nerves.Network.EAPoLManager do
     File.write(wpa_config_file(state), wpa_conf_contents(state))
   end
 
+  #  defp wait_for_disconnect(state = %{status: :disconnected}) do
+  #    Logger.debug("Disconnected...")
+  #    %{state | status: :ready}
+  #  end
+
+  #  defp wait_for_disconnect(state = %{status: :disconnecting}) do
+  #    Logger.debug("Wait for disconnected...")
+  #
+  #    :timer.sleep 111
+  #    GenServer.call(self(), :wait_for_disconnect)
+  #  end
+  #
+  defp wait_for_disconnect(state = %{status: :disconnecting}) do
+    receive do
+      {:disconnected, pid} ->
+        Logger.info("Got dsoconnected #{inspect pid}")
+        %{state | status: :disconnected}
+      after
+        3_333 ->
+          Logger.warn("Haven't received disconnect control even!")
+          state
+    end
+  end
+
+  defp wait_for_disconnect(state = %{status: _}) do
+    # We shal de-register the listener to WpaSupplicant's events
+
+    %{state | status: :ready}
+  end
+
+
 
   @spec wpa_control_pipe(t()) :: String.t()
   defp wpa_control_pipe(state) do
@@ -140,9 +147,19 @@ defmodule Nerves.Network.EAPoLManager do
   def start_wpa(state) do
     state = stop_wpa(state)
 
-    if !File.exists?(wpa_control_pipe(state)) do
-        # wpa_supplicant daemon not started, so launch it
-        with :ok <- write_wpa_conf(state),
+    Logger.info "State after stopping = #{inspect state}"
+
+    #    state = wait_for_disconnect(state)
+
+    if File.exists?(wpa_control_pipe(state)) do
+      case File.rm(wpa_control_pipe(state)) do
+        :ok -> :ok
+        {:error, reason} ->
+          Logger.error("Unable to remove #{wpa_control_pipe(state)}")
+      end
+    end
+
+     with :ok <- write_wpa_conf(state),
             {_, 0} <-  System.cmd(@wpa_supplicant_path,
                           [
                             "-i#{state.ifname}",
@@ -153,27 +170,19 @@ defmodule Nerves.Network.EAPoLManager do
 
           # give it time to open the pipe
           :timer.sleep 250
-          :ok
+
+          {:ok, pid} = Nerves.WpaSupplicant.start_link(state.ifname, wpa_control_pipe(state), name: :"Nerves.WpaSupplicant.#{state.ifname}")
+          Logger.info "Register Nerves.WpaSupplicant #{inspect state.ifname}"
+          {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
+          %{state | wpa_pid: pid}
         else
           {:error, reason} ->
-            Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant!")
+            Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reson = #{inspect reason}!")
+            state
           {output, error_code} ->
-            Logger.error("#{@wpa_supplicant} exitted with #{inspect error_code} output = #{output}!")
-        end
-    end
-
-    {:ok, pid} = Nerves.WpaSupplicant.start_link(state.ifname, wpa_control_pipe(state), name: :"Nerves.WpaSupplicant.#{state.ifname}")
-    Logger.info "Register Nerves.WpaSupplicant #{inspect state.ifname}"
-    {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
-    #    wpa_supplicant_settings = parse_settings(state.settings)
-    #    case Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings) do
-    #      :ok -> :ok
-    #      error ->
-    #        Logger.info "EAPoLManager(#{state.ifname}, #{state.context}) wpa_supplicant set_network error: #{inspect error}"
-    #        notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
-    #    end
-
-    %{state | wpa_pid: pid}
+            Logger.error("#{@wpa_supplicant_path} exitted with #{inspect error_code} output = #{output}!")
+            state
+     end
   end
 
   # if the wpa_pid is nil, we don't want to actually create the call.
@@ -183,13 +192,46 @@ defmodule Nerves.Network.EAPoLManager do
     {:reply, retval, state}
   end
 
-  def handle_call({:start, args}, _from, state) do
-    state = Map.merge(state, args)
-    retval = start_wpa(state)
-    Logger.info("start_wpa returned #{inspect retval} state = #{inspect state}")
-    {:reply, retval, state}
+  def handle_call(:stop, _from, state) do
+    retval = stop_wpa(state)
+    Logger.info("stop_wpa returned #{inspect retval} state = #{inspect state}")
+    {:reply, retval, retval}
   end
 
+  # args =
+  #  %{
+  #  :ssid => "nmc-eapol",
+  #  :identity => "user@example.org",
+  #  :ca_cert => "/var/system/pub/eapol/ca.pem",
+  #  :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+  #  :private_key => "/var/system/priv/eapol/user@example.org.key",
+  #  :private_key_passwd => "whatever"
+  #}
+  def handle_call({:start, args}, _from, state) do
+    retval =
+      Map.merge(state, args)
+      |> start_wpa()
+    #state = Map.merge(retval, args)
+    Logger.info("start_wpa returned #{inspect retval} state = #{inspect state}")
+    {:reply, retval, retval}
+  end
+
+  def handle_info(event = {Nerves.WpaSupplicant, e = {:"CTRL-EVENT-DISCONNECTED", _mac, _map}, %{ifname: _ifname}}, s) do
+    Logger.info("Event received: #{inspect e}")
+
+    {:noreply, s}
+  end
+
+  def handle_info(event = {Nerves.WpaSupplicant, {id, message}, %{ifname: ifname}}, s) do
+    Logger.info("Forwarding event = #{inspect event}")
+
+    #registry_name = String.to_atom(to_string(__MODULE__) <> ".#{s.ifname}")
+
+    Utils.notify(__MODULE__, ifname, {id, message}, %{ifname: ifname})
+    {:noreply, s}
+  end
+
+  # ignoring event: {Nerves.WpaSupplicant, {:"CTRL-EVENT-EAP-FAILURE", "EAP authentication failed"}, %{ifname: "eth0"}}
   def handle_info(event, s) do
     Logger.info "{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
