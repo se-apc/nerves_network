@@ -6,7 +6,12 @@ defmodule Nerves.Network.IFSupervisor do
 
   @moduledoc false
 
-  @type manager :: Nerves.Network.StaticManager | Nerves.Network.LinkLocalManager | Nerves.Network.DHCPManager | Nerves.Network.WiFiManager
+  @type manager ::
+    Nerves.Network.StaticManager |
+    Nerves.Network.LinkLocalManager |
+    Nerves.Network.DHCPManager |
+    Nerves.Network.WiFiManager |
+    Nerves.Network.EAPoLManager
 
   @spec start_link(GenServer.options) :: GenServer.on_start()
   def start_link(options \\ []) do
@@ -242,7 +247,7 @@ defmodule Nerves.Network.IFSupervisor do
     managers_v4 = ipv4_managers(settings)
     managers_v6 = ipv6_managers(settings)
 
-    managers_v4 ++ managers_v6
+    managers_v4 ++ managers_v6 ++ [Nerves.Network.EAPoLManager]
   end
 
   #There currently is only one manager for WiFi
