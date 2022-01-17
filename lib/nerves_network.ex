@@ -31,8 +31,15 @@ defmodule Nerves.Network do
     {:ipv6_dhcp, :stateful | :stateless} |
     {:ipv6_nameservers, [Types.ip_address]} |
     {:ssid, String.t} |
-    {:key_mgmt, :"WPA-PSK" | :NONE} |
-    {:psk, String.t}
+    {:key_mgmt, :"WPA-PSK" | :IEEE8021X | :NONE} |
+    {:psk, String.t} |
+    {:identity, String.t} |
+    {:ca_cert, String.t} |
+    {:client_cert, String.t} |
+    {:private_key, String.t} |
+    {:private_key_passwd, String.t}
+
+
 
   @typedoc "Keyword List settings to `setup/2`"
   @type setup_settings :: [setup_setting]
@@ -47,8 +54,14 @@ defmodule Nerves.Network do
     * `:domain` - e.g., "mycompany.com" (specify when :ipv4_address_method = :static)
     * `:nameservers` - e.g., ["8.8.8.8", "8.8.4.4"] (specify when :ipv4_address_method = :static)
     * `:ssid` - "My WiFi AP" (specify if this is a wireless interface)
-    * `:key_mgmt` - e.g., `:"WPA-PSK"` or `:NONE`
+    * `:key_mgmt` - e.g., `:"WPA-PSK"` or or  `:IEEE8021X` or `:NONE`
     * `:psk` - e.g., "my-secret-wlan-key"
+    *  :identity - e.g. "user@example.org"
+    *  :ca_cert - e.g. "/etc/cert/ca.pem"
+    *  :client_cert - e.g. "/etc/cert/user.pem"
+    *  :private_key - e.g. "/etc/cert/user.prv"
+    *  :private_key_passwd - e.g. "my secret password"
+
 
   See `t(#{__MODULE__}.setup_setting)` for more info.
   """
@@ -81,13 +94,13 @@ defmodule Nerves.Network do
   ## Examples
 
         iex> Nerves.Network.teardown("eth0", [ipv6_dhcp: :stateless])
-        {:ok, [ok: :ok]}
+        {:ok, [ok: :ok], {:ok, :ok}}
 
         iex> Nerves.Network.teardown("eth0", [ipv4_address_method: :dhcp])
-        {:ok, [ok: :ok]}
+        {:ok, [ok: :ok], {:ok, :ok}}
 
         iex> Nerves.Network.teardown("non_existent", [ipv6_dhcp: :stateless])
-        [{{:error, :not_found}, {:error, :not_found}}]
+        {:ok, [{{:error, :not_found}, {:error, :not_found}}, {{:error, :not_found}, {:error, :not_found}}]}
 
   """
   @spec teardown(Types.ifname, list()) :: {:ok, list(Nerves.Network.IFSupervisor.child_termination_t())}
