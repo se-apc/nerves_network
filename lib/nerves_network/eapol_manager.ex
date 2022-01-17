@@ -133,6 +133,7 @@ defmodule Nerves.Network.EAPoLManager do
         [
           state.ifname,
           wpa_control_pipe(state),
+          :permanent,
           [name: :"Nerves.WpaSupplicant.#{state.ifname}"]
         ]
       },
