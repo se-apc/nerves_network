@@ -159,8 +159,6 @@ defmodule Nerves.Network.EAPoLManager do
 defp start_wpa(state) do
   state = stop_wpa(state)
 
-  Logger.info "State after stopping = #{inspect state}"
-
   # The WPA control pipe should not exist. Just in case the terminated wpa_supplicant process would not have removed it, we
   # shall do that.
   if File.exists?(wpa_control_pipe(state)) do
@@ -179,7 +177,6 @@ defp start_wpa(state) do
 
     pid = start_wpa_supervisor(state)
 
-    Logger.info "Register Nerves.WpaSupplicant #{inspect state.ifname}"
     {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
     %{%{state | supplicant_port: port} | wpa_pid: pid}
   else
@@ -195,13 +192,11 @@ end
 # if the wpa_pid is nil, we don't want to actually create the call.
 def handle_call(:start, _from, state) do
   retval = start_wpa(state)
-  Logger.info("start_wpa returned #{inspect retval} state = #{inspect state}")
   {:reply, retval, state}
 end
 
 def handle_call(:stop, _from, state) do
   retval = stop_wpa(state)
-  Logger.info("stop_wpa returned #{inspect retval} state = #{inspect state}")
   {:reply, retval, retval}
 end
 
@@ -234,7 +229,7 @@ def handle_call({:start, args}, _from, state) do
   retval =
     Map.merge(state, args)
     |> start_wpa()
-  Logger.info("start_wpa returned #{inspect retval} state = #{inspect state}")
+
   {:reply, retval, retval}
 end
 
@@ -317,13 +312,20 @@ Returns `EAPoLManager.t()`.
   ...>    :private_key => "/var/system/priv/eapol/user@example.org.key",
   ...>    :private_key_passwd => "whatever"
   ...>  }
-  iex> retval = EAPoLManager.start("eth0", setup)
+  iex> retval = Nerves.Network.EAPoLManager.start("eth0", setup)
+  iex> is_map(retval)
+  true
+
+  iex> retval = Nerves.Network.EAPoLManager.start("eth0")
   iex> is_map(retval)
   true
 
 """
 def start(ifname, setup) do
   GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:start, setup})
+end
+def start(ifname) do
+  GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :start)
 end
 
 @doc """
@@ -336,7 +338,7 @@ Returns `EAPoLManager.t()`.
 
 ## Examples
 
-  iex> retval = EAPoLManager.stop("eth0")
+  iex> retval = Nerves.Network.EAPoLManager.stop("eth0")
   iex> is_map(retval)
   true
 
@@ -355,7 +357,7 @@ Returns `EAPoLManager.t()`.
 
 ## Examples
 
-  iex> retval = EAPoLManager.state("eth0")
+  iex> retval = Nerves.Network.EAPoLManager.state("eth0")
   iex> is_map(retval)
   true
 
@@ -384,7 +386,7 @@ Changes the WPA supplicant's configuration and writes the run-time config. The c
 
 ## Examples
 
-  iex> setup = %{
+  iex> cfg = %{
   ...>    :ssid => "eth0-eapol",
   ...>    :identity => "user@example.org",
   ...>    :ca_cert => "/var/system/pub/eapol/ca.pem",
@@ -392,7 +394,8 @@ Changes the WPA supplicant's configuration and writes the run-time config. The c
   ...>    :private_key => "/var/system/priv/eapol/user@example.org.key",
   ...>    :private_key_passwd => "whatever"
   ...>  }
-  EAPoLManager.setup("eth0", setup)
+  iex> Nerves.Network.EAPoLManager.setup("eth0", cfg)
+  :ok
 
 """
 def setup(ifname, setup) do
@@ -411,7 +414,7 @@ Returns `:ok` or {:error, reason}.
 
 ## Examples
 
-iex> EAPoLManager.reconfigure("eth0")
+iex> Nerves.Network.EAPoLManager.reconfigure("eth0")
 :ok
 
 """
