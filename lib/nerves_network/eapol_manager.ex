@@ -69,7 +69,7 @@ defmodule Nerves.Network.EAPoLManager do
       :timer.sleep 250
       %{state | wpa_pid: nil}
     else
-      Logger.warn "state.wpa_pid not pid!"
+      Logger.debug("state.wpa_pid not pid!")
       state
     end
   end
@@ -123,7 +123,6 @@ defmodule Nerves.Network.EAPoLManager do
                   :binary,
                   :exit_status
                 ])
-    Logger.info("++++++ Port.info = #{inspect Port.info(port)}")
     port
   end
 
@@ -140,7 +139,6 @@ defmodule Nerves.Network.EAPoLManager do
       id: :"Nerves.WpaSupplicant.#{state.ifname}",
       restart: :transient
     )
-    Logger.info("supervisor for Nerves.WpaSupplicant returnt #{inspect child}")
     {:ok, pid} = Supervisor.start_link([child],  [strategy: :one_for_one])
     [ child ] = Supervisor.which_children(pid)
 
@@ -217,9 +215,8 @@ def handle_call({:start, args}, _from, state) do
 end
 
 def handle_call(unknown, _from, state) do
-  Logger.warn("Unoknown call #{inspect unknown}")
+  Logger.warn("Unknown call #{inspect unknown}")
 
-  # {:stop, reason, state}
   {:reply, :ok, state}
 end
 
@@ -229,18 +226,9 @@ def handle_info(event = {Nerves.WpaSupplicant, e = {:"CTRL-EVENT-DISCONNECTED", 
   {:noreply, s}
 end
 
-# Called on wpa_ex port's exit
+# Called on wpa_ex port's exit. A subscriber to it is responsible to call GenServer with :start or {:start, setup}, if needed.
 def handle_info(event = {Nerves.WpaSupplicant, e = {:terminated, :unexpected_exit}, %{ifname: ifname}}, s) do
   Logger.info("Forwarding event = #{inspect event}")
-
-  #[name: '/usr/sbin/wpa_supplicant', links: [#PID<0.326.0>], id: 192, connected: #PID<0.326.0>, input: 0, output: 0, os_pid: 127308]
-  # [name: _name, links: _links, id: _id, connected: _connected, input: _input, output: _output, os_pid: os_pid]
-  #   = Port.info(s.supplicant_port)
-
-  sysret = System.cmd(@wpa_cli_path, ["-i#{s.ifname}", "-p#{@wpa_control_path}", "terminate"])
-  Logger.info "+++++ sysret = #{inspect sysret}"
-  #wpa_pid = start_wpa_supervisor(s)
-  #Nerves.WpaSupplicant.request(wpa_pid, :TERMINATE)
 
   Utils.notify(__MODULE__, ifname, e, %{ifname: ifname})
   {:noreply, %{s | wpa_pid: nil}}
@@ -258,16 +246,13 @@ def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
   {:noreply, state}
 end
 
-# Weill be called on wpa_supplicant's port's exit
+# Will be called on wpa_supplicant's port's exit
 def handle_info({_pid, {:exit_status, exit_status}}, state) do
   # IF exitted abnormaly - exit code != 0 then we shall attempt to restart the wpa_supplicant and associated ports
   Logger.warn("Exit status #{inspect exit_status}. Re-starting...")
   {:noreply, start_wpa(%{state | supplicant_port: nil})}
-  #{:noreply, state}
 end
 
-#[info]  eth0): ignoring event: {#Port<0.32>, {:exit_status, 0}}
-# ignoring event: {Nerves.WpaSupplicant, {:"CTRL-EVENT-EAP-FAILURE", "EAP authentication failed"}, %{ifname: "eth0"}}
 def handle_info(event, s) do
   Logger.info "#{s.ifname}): ignoring event: #{inspect event}"
 
