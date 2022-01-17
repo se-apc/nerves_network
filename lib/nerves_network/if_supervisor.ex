@@ -10,6 +10,7 @@ defmodule Nerves.Network.IFSupervisor do
     Nerves.Network.StaticManager |
     Nerves.Network.LinkLocalManager |
     Nerves.Network.DHCPManager |
+    Nerves.Network.DHCPv6Manager |
     Nerves.Network.WiFiManager |
     Nerves.Network.EAPoLManager
 
@@ -32,7 +33,7 @@ defmodule Nerves.Network.IFSupervisor do
     :permanent
   end
 
-  @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: [Supervisor.on_start_child()]
+  @spec setup(Types.ifname() | atom, Nerves.Network.setup_settings()) :: [Supervisor.on_start_child()]
   def setup(ifname, settings) when is_atom(ifname) do
     log_atomized_iface_error(ifname)
     setup(to_string(ifname), settings)
