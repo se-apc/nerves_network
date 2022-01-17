@@ -27,6 +27,15 @@ defmodule Nerves.Network.EAPoLManager do
     supplicant_port: GenServer.server | nil,
   }
 
+  @type setup() :: %{
+    :ssid => String.t(),
+    :identity => String.t(),
+    :ca_cert => String.t(),
+    :client_cert => String.t(),
+    :private_key => String.t(),
+    :private_key_passwd => String.t() | nil
+  }
+
   # The following are Nerves locations of the supplicant. If not using
   # Nerves, these may be different.
   @wpa_supplicant_path    "/usr/sbin/wpa_supplicant"
@@ -56,7 +65,7 @@ defmodule Nerves.Network.EAPoLManager do
   end
 
   @spec stop_wpa(t) :: t
-  def stop_wpa(state) do
+  defp stop_wpa(state) do
     if is_pid(state.wpa_pid) do
       Nerves.WpaSupplicant.stop(state.wpa_pid, state.supplicant_port)
 
@@ -67,7 +76,7 @@ defmodule Nerves.Network.EAPoLManager do
 
       # A grace priod for the OS to clean after wpa_supplicant process
       :timer.sleep 250
-      %{state | wpa_pid: nil}
+      %{%{state | wpa_pid: nil} | supplicant_port: nil}
     else
       Logger.debug("state.wpa_pid not pid!")
       state
@@ -147,13 +156,13 @@ defmodule Nerves.Network.EAPoLManager do
   end
 
 @spec start_wpa(t()) :: t()
-def start_wpa(state) do
+defp start_wpa(state) do
   state = stop_wpa(state)
 
   Logger.info "State after stopping = #{inspect state}"
 
-  #    state = wait_for_disconnect(state)
-
+  # The WPA control pipe should not exist. Just in case the terminated wpa_supplicant process would not have removed it, we
+  # shall do that.
   if File.exists?(wpa_control_pipe(state)) do
     case File.rm(wpa_control_pipe(state)) do
       :ok -> :ok
@@ -196,6 +205,22 @@ def handle_call(:stop, _from, state) do
   {:reply, retval, retval}
 end
 
+def handle_call(:state, _from, state) do
+  {:reply, state, state}
+end
+
+def handle_call({:setup, args}, _from, state) do
+  with retval <- Map.merge(state, args),
+       :ok <- write_wpa_conf(retval)
+  do
+    {:reply, :ok, retval}
+  else
+    {:error, reason} ->
+      Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reson = #{inspect reason}!")
+      {:reply, {:error, reason}, state}
+  end
+end
+
 # args =
 #  %{
 #  :ssid => "eth0-eapol",
@@ -209,9 +234,22 @@ def handle_call({:start, args}, _from, state) do
   retval =
     Map.merge(state, args)
     |> start_wpa()
-    #state = Map.merge(retval, args)
   Logger.info("start_wpa returned #{inspect retval} state = #{inspect state}")
   {:reply, retval, retval}
+end
+
+def handle_call(:reconfigure, _from, state = %{wpa_pid: wpa_pid}) when is_pid(wpa_pid) do
+  retval = Nerves.WpaSupplicant.reconfigure(state.wpa_pid)
+
+  Logger.info(":reconfigure returned #{inspect retval} state = #{inspect state}")
+
+  {:reply, retval, state}
+end
+
+def handle_call(:reconfigure, _from, state = %{wpa_pid: _wpa_pid}) do
+  Logger.warn("WPA is not started - skipping :reconfigure")
+
+  {:reply, {:error, :not_started}, state}
 end
 
 def handle_call(unknown, _from, state) do
@@ -241,12 +279,12 @@ def handle_info(event = {Nerves.WpaSupplicant, {id, message}, %{ifname: ifname}}
   {:noreply, s}
 end
 
+# Will be called on wpa_supplicant's port's exit
 def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
   Logger.warn("Exit status #{inspect exit_status}. It's O.K.")
-  {:noreply, state}
+  {:noreply, %{state | supplicant_port: nil}}
 end
 
-# Will be called on wpa_supplicant's port's exit
 def handle_info({_pid, {:exit_status, exit_status}}, state) do
   # IF exitted abnormaly - exit code != 0 then we shall attempt to restart the wpa_supplicant and associated ports
   Logger.warn("Exit status #{inspect exit_status}. Re-starting...")
@@ -258,4 +296,127 @@ def handle_info(event, s) do
 
   {:noreply, s}
 end
+
+@doc """
+Starts EAPoL service on `ifname` interface with the given `setup`configuration
+If WPA service had already been started it gets restarted.
+
+Returns `EAPoLManager.t()`.
+
+## Parameters
+- ifname: String.t() i.e. "eth0"
+- setup: EAPoLManager.setup()
+
+## Examples
+
+  iex> setup = %{
+  ...>    :ssid => "eth0-eapol",
+  ...>    :identity => "user@example.org",
+  ...>    :ca_cert => "/var/system/pub/eapol/ca.pem",
+  ...>    :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+  ...>    :private_key => "/var/system/priv/eapol/user@example.org.key",
+  ...>    :private_key_passwd => "whatever"
+  ...>  }
+  iex> retval = EAPoLManager.start("eth0", setup)
+  iex> is_map(retval)
+  true
+
+"""
+def start(ifname, setup) do
+  GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:start, setup})
+end
+
+@doc """
+Stops EAPoL service on `ifname` interface.
+
+Returns `EAPoLManager.t()`.
+
+## Parameters
+- ifname: String.t() i.e. "eth0"
+
+## Examples
+
+  iex> retval = EAPoLManager.stop("eth0")
+  iex> is_map(retval)
+  true
+
+"""
+def stop(ifname) do
+  GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :stop)
+end
+
+@doc """
+Returns current state of EAPoLManager for a given interface.
+
+Returns `EAPoLManager.t()`.
+
+## Parameters
+- ifname: String.t() i.e. "eth0"
+
+## Examples
+
+  iex> retval = EAPoLManager.state("eth0")
+  iex> is_map(retval)
+  true
+
+"""
+def state(ifname) do
+  GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :state)
+end
+
+@doc """
+
+Returns `setup`.
+Changes the WPA supplicant's configuration and writes the run-time config. The changes will not take affect, until either of:
+- WPA is restarted: stop(ifname), start(ifname)
+- reconfigure(ifname) call
+## Parameters
+- ifname: String.t() i.e. "eth0"
+- setup: i.e.:
+%{
+:ssid => "eth0-eapol",
+:identity => "user@example.org",
+:ca_cert => "/var/system/pub/eapol/ca.pem",
+:client_cert => "/var/system/pub/eapol/user@example.org.pem",
+:private_key => "/var/system/priv/eapol/user@example.org.key",
+:private_key_passwd => "whatever"
+}
+
+## Examples
+
+  iex> setup = %{
+  ...>    :ssid => "eth0-eapol",
+  ...>    :identity => "user@example.org",
+  ...>    :ca_cert => "/var/system/pub/eapol/ca.pem",
+  ...>    :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+  ...>    :private_key => "/var/system/priv/eapol/user@example.org.key",
+  ...>    :private_key_passwd => "whatever"
+  ...>  }
+  EAPoLManager.setup("eth0", setup)
+
+"""
+def setup(ifname, setup) do
+  GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:setup, setup})
+end
+
+@doc """
+Brings the current configuration e.g. set by EAPoLManager.setup(ifname) call into effect. The WPA supplicant must be started and
+running (EAPoLManager.start(ifname) call)  otherwise {:error, :not_started} is reported.
+The EAP authentication process get's restarted, after successful reconfiguration.
+
+Returns `:ok` or {:error, reason}.
+
+## Parameters
+- ifname: Stringt() e.g. EAPoLManager.reconfigure("eth0")
+
+## Examples
+
+iex> EAPoLManager.reconfigure("eth0")
+:ok
+
+"""
+def reconfigure(ifname) do
+  GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :reconfigure)
+end
+
 end
