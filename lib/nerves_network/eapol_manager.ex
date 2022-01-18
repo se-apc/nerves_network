@@ -38,15 +38,28 @@ defmodule Nerves.Network.EAPoLManager do
 
   # The following are Nerves locations of the supplicant. If not using
   # Nerves, these may be different.
-  @wpa_supplicant_path    "/usr/sbin/wpa_supplicant"
-  @wpa_cli_path           "/usr/sbin/wpa_cli"
-  @wpa_control_path       "/var/run/wpa_supplicant"
-  @wpa_config_file_prefix "/var/run/nerves_network_wpa_eapol.conf"
+  @default_wpa_supplicant_path    "/usr/sbin/wpa_supplicant"
+  @default_wpa_control_path       "/var/run/wpa_supplicant"
+  @default_wpa_config_file_prefix "/var/run/nerves_network_wpa_eapol.conf"
+
+  @wpa_supplicant_path    Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_supplicant_path] || @default_wpa_supplicant_path
+  @wpa_control_path       Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_control_path] || @default_wpa_control_path
+  @wpa_config_file_prefix Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_config_file_prefix] || @default_wpa_config_file_prefix
+
 
   @doc false
   @spec start_link(Types.ifname, Nerves.Network.setup_settings, GenServer.options) :: GenServer.on_start
   def start_link(ifname, settings, opts \\ []) do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
+  end
+
+  defp registry_register(registry_name, ifname) do
+    case Registry.register(registry_name, ifname, []) do
+      {:ok, _pid} ->
+        Logger.debug("Succesfuly registered #{ifname} to #{inspect registry_name}")
+      {:error, {:already_registered, _pid}} ->
+        Logger.warn("Already registered #{ifname} to #{inspect registry_name}")
+    end
   end
 
   def init({ifname, settings}) do
@@ -55,7 +68,7 @@ defmodule Nerves.Network.EAPoLManager do
     Logger.info("Register Nerves.NetworkInterface #{inspect ifname}")
 
     # Register for nerves_network_interface events and udhcpc events
-    {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
+    :ok = registry_register(Nerves.NetworkInterface, ifname)
     Registry.start_link(keys: :duplicate, name: __MODULE__)
 
     Logger.info "Done Registering"
@@ -177,11 +190,11 @@ defp start_wpa(state) do
 
     pid = start_wpa_supervisor(state)
 
-    {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
+    :ok = registry_register(Nerves.WpaSupplicant, state.ifname)
     %{%{state | supplicant_port: port} | wpa_pid: pid}
   else
     {:error, reason} ->
-      Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reson = #{inspect reason}!")
+      Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reason = #{inspect reason}!")
       state
     {output, error_code} ->
       Logger.error("#{@wpa_supplicant_path} exitted with #{inspect error_code} output = #{output}!")
@@ -211,7 +224,7 @@ def handle_call({:setup, args}, _from, state) do
     {:reply, :ok, retval}
   else
     {:error, reason} ->
-      Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reson = #{inspect reason}!")
+      Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reason = #{inspect reason}!")
       {:reply, {:error, reason}, state}
   end
 end
