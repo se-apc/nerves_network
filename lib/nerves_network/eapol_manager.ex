@@ -197,7 +197,7 @@ defp start_wpa(state) do
       Logger.error("Unable to write #{wpa_config_file(state)} wpa_supplicant reason = #{inspect reason}!")
       state
     {output, error_code} ->
-      Logger.error("#{@wpa_supplicant_path} exitted with #{inspect error_code} output = #{output}!")
+      Logger.error("#{@wpa_supplicant_path} exited with #{inspect error_code} output = #{output}!")
       state
   end
 end
@@ -294,7 +294,7 @@ def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
 end
 
 def handle_info({_pid, {:exit_status, exit_status}}, state) do
-  # IF exitted abnormaly - exit code != 0 then we shall attempt to restart the wpa_supplicant and associated ports
+  # IF exited abnormaly - exit code != 0 then we shall attempt to restart the wpa_supplicant and associated ports
   Logger.warn("Exit status #{inspect exit_status}. Re-starting...")
   {:noreply, start_wpa(%{state | supplicant_port: nil})}
 end
