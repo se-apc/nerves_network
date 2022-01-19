@@ -71,7 +71,7 @@ defmodule Nerves.Network.EAPoLManager do
     :ok = registry_register(Nerves.NetworkInterface, ifname)
     Registry.start_link(keys: :duplicate, name: __MODULE__)
 
-    Logger.info "Done Registering"
+    Logger.info("Done Registering")
     state = %{settings: settings, ifname: ifname, wpa_pid: nil, supplicant_port: nil, wpa_ctrl_iface: @wpa_control_path}
 
     {:ok, state}
@@ -87,7 +87,7 @@ defmodule Nerves.Network.EAPoLManager do
         _ = Registry.unregister(Nerves.WpaSupplicant, state.ifname)
       end
 
-      # A grace priod for the OS to clean after wpa_supplicant process
+      # A grace period for the OS to clean after wpa_supplicant process
       :timer.sleep 250
       %{%{state | wpa_pid: nil} | supplicant_port: nil}
     else
