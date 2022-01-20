@@ -156,6 +156,20 @@ defmodule Nerves.Network.EAPoLManager do
     port
   end
 
+  defp wait_for_file(name, step_ms, timeout_ms) when is_integer(timeout_ms) and timeout_ms > 0 do
+    if !File.exists?(name) do
+      :timer.sleep(step_ms)
+      wait_for_file(name, step_ms, timeout_ms - step_ms)
+    else
+      :ok
+    end
+  end
+
+  defp wait_for_file(_name, _step_ms, timeout_ms) when is_integer(timeout_ms) and timeout_ms <=  0 do
+    :timeout
+  end
+
+
   defp start_wpa_supervisor(state) do
     child =
       Supervisor.child_spec(
@@ -197,7 +211,14 @@ defmodule Nerves.Network.EAPoLManager do
       port = start_supplicant_port(state)
 
       # give it time to open the pipe
-      :timer.sleep(250)
+      wpa_control_pipe(state)
+      |> wait_for_file(111, 3_333)
+      |> case do
+        :ok ->
+          Logger.debug("Control pipe exists. Starting wpa_ex...")
+        :timeout ->
+          Logger.warn("WPA control pipe #{inspect wpa_control_pipe(state)} not created on time!")
+      end
 
       pid = start_wpa_supervisor(state)
 
