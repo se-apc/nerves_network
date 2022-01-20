@@ -217,7 +217,7 @@ defmodule Nerves.Network.EAPoLManager do
         :ok ->
           Logger.debug("Control pipe exists. Starting wpa_ex...")
         :timeout ->
-          Logger.warn("WPA control pipe #{inspect wpa_control_pipe(state)} not created on timee!")
+          Logger.warn("WPA control pipe #{inspect wpa_control_pipe(state)} not created on time!")
       end
 
       pid = start_wpa_supervisor(state)
