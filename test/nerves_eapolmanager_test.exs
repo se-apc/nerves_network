@@ -25,7 +25,6 @@ defmodule Nerves.Network.EAPoLManagerTest do
   end
 
   setup_all do
-    IO.puts("Starting Tests...")
     start_dependencies()
 
     #    setup = %{
@@ -73,7 +72,6 @@ defmodule Nerves.Network.EAPoLManagerTest do
   end
 
   test "start_1" do
-    IO.puts "+++ Test start_1"
     setup = %{
        :ssid => "eth0-eapol",
        :identity => "user@example.org",
@@ -88,7 +86,6 @@ defmodule Nerves.Network.EAPoLManagerTest do
   end
 
   test "start_2" do
-    IO.puts "+++ Test start_2"
     setup = %{
        :ssid => "eth0-eapol",
        :identity => "user@example.org",
@@ -106,13 +103,11 @@ defmodule Nerves.Network.EAPoLManagerTest do
   end
 
   test "state" do
-    IO.puts "+++ Test state"
     retval = Nerves.Network.EAPoLManager.state("eth0")
     assert is_map(retval)
   end
 
   test "setup" do
-    IO.puts "+++ Test setup"
     cfg = %{
        :ssid => "eth0-eapol",
        :identity => "user2@example.org",
@@ -147,13 +142,11 @@ defmodule Nerves.Network.EAPoLManagerTest do
   end
 
   test "stop" do
-    IO.puts "+++ Test stop"
     retval = Nerves.Network.EAPoLManager.stop("eth0")
     assert is_map(retval)
   end
 
   test "the truth" do
-    IO.puts "+++++ test the truth"
     assert 1 + 1 == 2
   end
 
