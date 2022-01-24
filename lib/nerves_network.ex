@@ -33,11 +33,7 @@ defmodule Nerves.Network do
     {:ssid, String.t} |
     {:key_mgmt, :"WPA-PSK" | :IEEE8021X | :NONE} |
     {:psk, String.t} |
-    {:identity, String.t} |
-    {:ca_cert, String.t} |
-    {:client_cert, String.t} |
-    {:private_key, String.t} |
-    {:private_key_passwd, String.t}
+    {:eapol, boolean()}
 
 
 
@@ -56,11 +52,7 @@ defmodule Nerves.Network do
     * `:ssid` - "My WiFi AP" (specify if this is a wireless interface)
     * `:key_mgmt` - e.g., `:"WPA-PSK"` or or  `:IEEE8021X` or `:NONE`
     * `:psk` - e.g., "my-secret-wlan-key"
-    *  :identity - e.g. "user@example.org"
-    *  :ca_cert - e.g. "/etc/cert/ca.pem"
-    *  :client_cert - e.g. "/etc/cert/user.pem"
-    *  :private_key - e.g. "/etc/cert/user.prv"
-    *  :private_key_passwd - e.g. "my secret password"
+    * `:eapol` - true | false
 
 
   See `t(#{__MODULE__}.setup_setting)` for more info.
