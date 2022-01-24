@@ -95,9 +95,10 @@ defmodule Nerves.Network.EAPoLManager do
 
       # A grace period for the OS to clean after wpa_supplicant process
       :timer.sleep(250)
-      %{%{state | wpa_pid: nil} | supplicant_port: nil}
+
+      %{state | wpa_pid: nil, supplicant_port: nil}
     else
-      Logger.debug("state.wpa_pid not pid!")
+      Logger.debug("stop_wpa: state.wpa_pid not pid!")
       state
     end
   end
@@ -203,7 +204,7 @@ defmodule Nerves.Network.EAPoLManager do
           :ok
 
         {:error, reason} ->
-          Logger.error("Unable to remove #{wpa_control_pipe(state)}")
+          Logger.error("Unable to remove #{wpa_control_pipe(state)} reason: #{inspect reason}")
       end
     end
 
@@ -223,7 +224,8 @@ defmodule Nerves.Network.EAPoLManager do
       pid = start_wpa_supervisor(state)
 
       :ok = registry_register(Nerves.WpaSupplicant, state.ifname)
-      %{%{state | supplicant_port: port} | wpa_pid: pid}
+
+       %{state | supplicant_port: port, wpa_pid: pid}
     else
       {:error, reason} ->
         Logger.error(
@@ -244,7 +246,7 @@ defmodule Nerves.Network.EAPoLManager do
   # if the wpa_pid is nil, we don't want to actually create the call.
   def handle_call(:start, _from, state) do
     retval = start_wpa(state)
-    {:reply, retval, state}
+    {:reply, retval, retval}
   end
 
   def handle_call(:stop, _from, state) do
@@ -290,8 +292,6 @@ defmodule Nerves.Network.EAPoLManager do
   def handle_call(:reconfigure, _from, state = %{wpa_pid: wpa_pid}) when is_pid(wpa_pid) do
     retval = Nerves.WpaSupplicant.reconfigure(state.wpa_pid)
 
-    Logger.info(":reconfigure returned #{inspect(retval)} state = #{inspect(state)}")
-
     {:reply, retval, state}
   end
 
@@ -308,7 +308,7 @@ defmodule Nerves.Network.EAPoLManager do
   end
 
   def handle_info(
-        event =
+        _event =
           {Nerves.WpaSupplicant, e = {:"CTRL-EVENT-DISCONNECTED", _mac, _map}, %{ifname: _ifname}},
         s
       ) do
@@ -335,6 +335,15 @@ defmodule Nerves.Network.EAPoLManager do
     {:noreply, s}
   end
 
+  # Handling events like: {Nerves.WpaSupplicant, :"CTRL-EVENT-TERMINATING", %{ifname: "eth0"}} and
+  # forwarding them as uniform "{:"CTRL-EVENT-TERMINATING", ""}
+  def handle_info(event = {Nerves.WpaSupplicant, id, %{ifname: ifname}}, s) when is_atom(id) do
+    Logger.info("Forwarding event = #{inspect(event)}")
+
+    Utils.notify(__MODULE__, ifname, {id, ""}, %{ifname: ifname})
+    {:noreply, s}
+  end
+
   # Will be called on wpa_supplicant's port's exit
   def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
     Logger.warn("Exit status #{inspect(exit_status)}. It's O.K.")
@@ -351,6 +360,14 @@ defmodule Nerves.Network.EAPoLManager do
     Logger.info("#{s.ifname}): ignoring event: #{inspect(event)}")
 
     {:noreply, s}
+  end
+
+  def terminate(reason, state) do
+    Logger.warn("#{__MODULE__} Terminating... reason: #{inspect reason}")
+
+    # We are emitting a Nerves.Network.EAPoLManager's termination event so it could eventually get re-started
+    Utils.notify(__MODULE__, state.ifname, {:terminating, __MODULE__}, %{ifname: state.ifname})
+    stop_wpa(state)
   end
 
   @doc """
@@ -377,6 +394,15 @@ defmodule Nerves.Network.EAPoLManager do
     iex> is_map(retval)
     true
 
+    iex> setup = %{
+    ...>    :ssid => "eth0-eapol",
+    ...>    :identity => "user@example.org",
+    ...>    :ca_cert => "/var/system/pub/eapol/ca.pem",
+    ...>    :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+    ...>    :private_key => "/var/system/priv/eapol/user@example.org.key",
+    ...>    :private_key_passwd => "whatever"
+    ...>  }
+    iex> :ok = Nerves.Network.EAPoLManager.setup("eth0", setup)
     iex> retval = Nerves.Network.EAPoLManager.start("eth0")
     iex> is_map(retval)
     true
@@ -476,6 +502,15 @@ defmodule Nerves.Network.EAPoLManager do
 
   ## Examples
 
+  #iex> setup = %{
+    #...>    :ssid => "eth0-eapol",
+    #...>    :identity => "user@example.org",
+    #...>    :ca_cert => "/var/system/pub/eapol/ca.pem",
+    #...>    :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+    #...>    :private_key => "/var/system/priv/eapol/user@example.org.key",
+    #...>    :private_key_passwd => "whatever"
+    #...>  }
+  #iex> _ = Nerves.Network.EAPoLManager.start("eth0", setup)
   iex> Nerves.Network.EAPoLManager.reconfigure("eth0")
   :ok
 
