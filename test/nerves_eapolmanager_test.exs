@@ -7,21 +7,21 @@ defmodule Nerves.Network.EAPoLManagerTest do
   doctest Nerves.Network.EAPoLManager
 
   defp start_dependencies do
-    #GenServer.start_link(__MODULE__, [], name: Nerves.NetworkInterface.Worker)
-    #GenServer.start_link(__MODULE__, [], name: Nerves.Network.Config)
+    # GenServer.start_link(__MODULE__, [], name: Nerves.NetworkInterface.Worker)
+    # GenServer.start_link(__MODULE__, [], name: Nerves.Network.Config)
 
-    Nerves.Network.teardown("eth0", [eapol: true])
-    Nerves.Network.setup("eth0", [eapol: true])
-    :timer.sleep 1111
+    Nerves.Network.teardown("eth0", eapol: true)
+    Nerves.Network.setup("eth0", eapol: true)
+    :timer.sleep(1111)
 
-    #Nerves.Network.EAPoLManager.start("eth0", setup)
+    # Nerves.Network.EAPoLManager.start("eth0", setup)
 
     :ok
   end
 
   defp list_wpa_processes() do
-      x = System.cmd "ps", ["-C", "wpa_supplicant"]
-      IO.puts "+++ ps = #{inspect x}"
+    x = System.cmd("ps", ["-C", "wpa_supplicant"])
+    IO.puts("+++ ps = #{inspect(x)}")
   end
 
   setup_all do
@@ -40,7 +40,7 @@ defmodule Nerves.Network.EAPoLManagerTest do
 
     on_exit(fn ->
       Nerves.Network.EAPoLManager.stop("eth0")
-      #:timer.sleep 2500
+      # :timer.sleep 2500
       list_wpa_processes()
       :ok
     end)
@@ -63,7 +63,7 @@ defmodule Nerves.Network.EAPoLManagerTest do
 
     on_exit(fn ->
       Nerves.Network.EAPoLManager.stop("eth0")
-      #:timer.sleep 2500
+      # :timer.sleep 2500
       list_wpa_processes()
       :ok
     end)
@@ -73,27 +73,28 @@ defmodule Nerves.Network.EAPoLManagerTest do
 
   test "start_1" do
     setup = %{
-       :ssid => "eth0-eapol",
-       :identity => "user@example.org",
-       :ca_cert => "/var/system/pub/eapol/ca.pem",
-       :client_cert => "/var/system/pub/eapol/user@example.org.pem",
-       :private_key => "/var/system/priv/eapol/user@example.org.key",
-       :private_key_passwd => "whatever"
-     }
+      :ssid => "eth0-eapol",
+      :identity => "user@example.org",
+      :ca_cert => "/var/system/pub/eapol/ca.pem",
+      :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+      :private_key => "/var/system/priv/eapol/user@example.org.key",
+      :private_key_passwd => "whatever"
+    }
+
     retval = Nerves.Network.EAPoLManager.start("eth0", setup)
     assert is_map(retval)
-
   end
 
   test "start_2" do
     setup = %{
-       :ssid => "eth0-eapol",
-       :identity => "user@example.org",
-       :ca_cert => "/var/system/pub/eapol/ca.pem",
-       :client_cert => "/var/system/pub/eapol/user@example.org.pem",
-       :private_key => "/var/system/priv/eapol/user@example.org.key",
-       :private_key_passwd => "whatever"
-     }
+      :ssid => "eth0-eapol",
+      :identity => "user@example.org",
+      :ca_cert => "/var/system/pub/eapol/ca.pem",
+      :client_cert => "/var/system/pub/eapol/user@example.org.pem",
+      :private_key => "/var/system/priv/eapol/user@example.org.key",
+      :private_key_passwd => "whatever"
+    }
+
     :ok = Nerves.Network.EAPoLManager.setup("eth0", setup)
     retval = Nerves.Network.EAPoLManager.start("eth0")
     %{wpa_pid: wpa_pid, supplicant_port: supplicant_port} = retval
@@ -109,13 +110,14 @@ defmodule Nerves.Network.EAPoLManagerTest do
 
   test "setup" do
     cfg = %{
-       :ssid => "eth0-eapol",
-       :identity => "user2@example.org",
-       :ca_cert => "/var/system/pub/eapol/ca.pem",
-       :client_cert => "/var/system/pub/eapol/user2@example.org.pem",
-       :private_key => "/var/system/priv/eapol/user2@example.org.key",
-       :private_key_passwd => "whatever2"
-     }
+      :ssid => "eth0-eapol",
+      :identity => "user2@example.org",
+      :ca_cert => "/var/system/pub/eapol/ca.pem",
+      :client_cert => "/var/system/pub/eapol/user2@example.org.pem",
+      :private_key => "/var/system/priv/eapol/user2@example.org.key",
+      :private_key_passwd => "whatever2"
+    }
+
     assert :ok == Nerves.Network.EAPoLManager.setup("eth0", cfg)
   end
 
@@ -128,15 +130,18 @@ defmodule Nerves.Network.EAPoLManagerTest do
       :private_key => "/var/system/priv/eapol/user@example.org.pem",
       :private_key_passwd => "whatever"
     }
-     Elixir.Nerves.Network.EAPoLManager.start("eth0", setup)
-     cfg = %{
-        :ssid => "eth0-eapol",
-        :identity => "user2@example.org",
-        :ca_cert => "/var/system/pub/eapol/ca.pem",
-        :client_cert => "/var/system/pub/eapol/user2@example.org.pem",
-        :private_key => "/var/system/priv/eapol/user2@example.org.key",
-        :private_key_passwd => "whatever2"
-      }
+
+    Elixir.Nerves.Network.EAPoLManager.start("eth0", setup)
+
+    cfg = %{
+      :ssid => "eth0-eapol",
+      :identity => "user2@example.org",
+      :ca_cert => "/var/system/pub/eapol/ca.pem",
+      :client_cert => "/var/system/pub/eapol/user2@example.org.pem",
+      :private_key => "/var/system/priv/eapol/user2@example.org.key",
+      :private_key_passwd => "whatever2"
+    }
+
     assert :ok == Nerves.Network.EAPoLManager.setup("eth0", cfg)
     assert :ok == Nerves.Network.EAPoLManager.reconfigure("eth0")
   end
@@ -149,6 +154,4 @@ defmodule Nerves.Network.EAPoLManagerTest do
   test "the truth" do
     assert 1 + 1 == 2
   end
-
-
 end
