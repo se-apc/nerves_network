@@ -10,7 +10,7 @@ defmodule Nerves.Network.EAPoLManagerTest do
     #GenServer.start_link(__MODULE__, [], name: Nerves.NetworkInterface.Worker)
     #GenServer.start_link(__MODULE__, [], name: Nerves.Network.Config)
 
-    #Nerves.Network.teardown("eth0", [eapol: true])
+    Nerves.Network.teardown("eth0", [eapol: true])
     Nerves.Network.setup("eth0", [eapol: true])
     :timer.sleep 1111
 
