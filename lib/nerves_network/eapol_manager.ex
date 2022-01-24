@@ -96,7 +96,7 @@ defmodule Nerves.Network.EAPoLManager do
       # A grace period for the OS to clean after wpa_supplicant process
       :timer.sleep(250)
 
-      %{%{state | wpa_pid: nil} | supplicant_port: nil}
+      %{state | wpa_pid: nil, supplicant_port: nil}
     else
       Logger.debug("stop_wpa: state.wpa_pid not pid!")
       state
@@ -225,7 +225,7 @@ defmodule Nerves.Network.EAPoLManager do
 
       :ok = registry_register(Nerves.WpaSupplicant, state.ifname)
 
-       %{%{state | supplicant_port: port} | wpa_pid: pid}
+       %{state | supplicant_port: port, wpa_pid: pid}
     else
       {:error, reason} ->
         Logger.error(
@@ -335,7 +335,7 @@ defmodule Nerves.Network.EAPoLManager do
     {:noreply, s}
   end
 
-  # Hnadling events like: {Nerves.WpaSupplicant, :"CTRL-EVENT-TERMINATING", %{ifname: "eth0"}} and
+  # Handling events like: {Nerves.WpaSupplicant, :"CTRL-EVENT-TERMINATING", %{ifname: "eth0"}} and
   # forwarding them as uniform "{:"CTRL-EVENT-TERMINATING", ""}
   def handle_info(event = {Nerves.WpaSupplicant, id, %{ifname: ifname}}, s) when is_atom(id) do
     Logger.info("Forwarding event = #{inspect(event)}")
