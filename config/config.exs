@@ -13,7 +13,8 @@ config :nerves_network, :default,
   #:stateless - only non-address information
   eth0: [
     ipv4_address_method: :dhcp,
-    ipv6_dhcp: :stateful
+    ipv6_dhcp: :stateful,
+    eapol: true
   ]
 
 #The prefixes for the lease and pid file. The file anmes will be appended with the inetrface's name
