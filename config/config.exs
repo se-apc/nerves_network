@@ -13,7 +13,8 @@ config :nerves_network, :default,
   #:stateless - only non-address information
   eth0: [
     ipv4_address_method: :dhcp,
-    ipv6_dhcp: :stateful
+    ipv6_dhcp: :stateful,
+    eapol: true
   ]
 
 #The prefixes for the lease and pid file. The file anmes will be appended with the inetrface's name
@@ -40,4 +41,11 @@ config :nerves_network, :resolver,
     resolvconf_file: "/tmp/resolv.conf"
   ]
 
+config :nerves_network, :eapolmanager,
+[
+  wpa_supplicant_path:    "/usr/sbin/wpa_supplicant",
+  wpa_cli_path:           "/usr/sbin/wpa_cli",
+  wpa_control_path:       "/var/run/wpa_supplicant",
+  wpa_config_file_prefix: "/var/run/nerves_network_wpa_eapol.conf"
+]
 

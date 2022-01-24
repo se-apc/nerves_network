@@ -6,7 +6,13 @@ defmodule Nerves.Network.IFSupervisor do
 
   @moduledoc false
 
-  @type manager :: Nerves.Network.StaticManager | Nerves.Network.LinkLocalManager | Nerves.Network.DHCPManager | Nerves.Network.WiFiManager
+  @type manager ::
+    Nerves.Network.StaticManager |
+    Nerves.Network.LinkLocalManager |
+    Nerves.Network.DHCPManager |
+    Nerves.Network.DHCPv6Manager |
+    Nerves.Network.WiFiManager |
+    Nerves.Network.EAPoLManager
 
   @spec start_link(GenServer.options) :: GenServer.on_start()
   def start_link(options \\ []) do
@@ -27,16 +33,17 @@ defmodule Nerves.Network.IFSupervisor do
     :permanent
   end
 
-  @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: [Supervisor.on_start_child()]
+  @spec setup(Types.ifname() | atom, Nerves.Network.setup_settings()) :: [Supervisor.on_start_child()]
   def setup(ifname, settings) when is_atom(ifname) do
     log_atomized_iface_error(ifname)
     setup(to_string(ifname), settings)
   end
 
   def setup(ifname, settings) do
-    Logger.debug"#{ifname} (#{inspect settings})"
+    Logger.debug("#{ifname} (#{inspect settings})")
 
     manager_modules = managers(if_type(ifname), settings)
+
     Logger.debug(".setup manager_modules: #{inspect manager_modules}")
 
     children =
@@ -231,6 +238,11 @@ defmodule Nerves.Network.IFSupervisor do
       static_managers ++ auto_managers ++ dhcp_managers
   end
 
+  defp eapol_managers(true), do: [Nerves.Network.EAPoLManager]
+  defp eapol_managers(eapol_setting) when is_boolean(eapol_setting) or is_nil(eapol_setting), do: []
+  defp eapol_managers(settings) when is_list(settings), do: eapol_managers(settings[:eapol])
+
+
   # Return the appropriate interface managers based on the interface's type
   # and settings. Typically there should be zero or one only manager for IPv4, whereas there may be
   # multiple managers for IPv6 (i.e. static, autoconf, DHCPv6)
@@ -241,8 +253,14 @@ defmodule Nerves.Network.IFSupervisor do
 
     managers_v4 = ipv4_managers(settings)
     managers_v6 = ipv6_managers(settings)
+    eapol       = eapol_managers(settings)
 
-    managers_v4 ++ managers_v6
+    managers =
+      managers_v4 ++ managers_v6 ++ eapol
+
+    Logger.debug("Managers = #{inspect managers}")
+
+    managers
   end
 
   #There currently is only one manager for WiFi
