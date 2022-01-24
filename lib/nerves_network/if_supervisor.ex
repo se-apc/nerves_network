@@ -258,6 +258,8 @@ defmodule Nerves.Network.IFSupervisor do
     managers =
       managers_v4 ++ managers_v6 ++ eapol
 
+    Logger.debug("Managers = #{inspect managers}")
+
     managers
   end
 
