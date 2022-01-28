@@ -43,7 +43,7 @@ defmodule Nerves.Network.Mixfile do
       {:muontrap, "~> 1.0"},
       {:nerves_network_interface, github: "se-apc/nerves_network_interface", branch: "master", override: true},
       {:nerves_wpa_supplicant, github: "se-apc/nerves_wpa_supplicant", branch: "master", override: true},
-      {:gen_icmp, git: "https://github.com/se-apc/gen_icmp.git", override: true},
+      {:gen_icmp, github: "msantos/gen_icmp"},
       {:procket, git: "https://github.com/se-apc/procket.git", override: true},
       {:pkt, git: "https://github.com/se-apc/pkt.git", override: true},
       {:elixir_make, "~> 0.4", runtime: false},
