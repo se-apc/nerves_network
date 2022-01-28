@@ -45,7 +45,7 @@ defmodule Nerves.Network.Mixfile do
       {:nerves_wpa_supplicant, github: "se-apc/nerves_wpa_supplicant", branch: "master", override: true},
       {:gen_icmp, github: "msantos/gen_icmp"},
       {:procket, git: "https://github.com/se-apc/procket.git", override: true},
-      {:pkt, git: "https://github.com/se-apc/pkt.git", override: true},
+      {:pkt, github: "msantos/pkt", override: true},
       {:elixir_make, "~> 0.4", runtime: false},
       {:ex_doc, "~> 0.21", only: :dev},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false}

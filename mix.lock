@@ -13,7 +13,7 @@
   "nerves_network_interface": {:git, "https://github.com/se-apc/nerves_network_interface.git", "272e2cb568b975db6e0f1fa8a2869a617f4aee21", [branch: "master"]},
   "nerves_wpa_supplicant": {:git, "https://github.com/se-apc/nerves_wpa_supplicant.git", "07d7a2dd8130461cc13afc2bccd4ac77fcb38365", [branch: "master"]},
   "nimble_parsec": {:hex, :nimble_parsec, "1.2.0", "b44d75e2a6542dcb6acf5d71c32c74ca88960421b6874777f79153bbbbd7dccc", [:mix], [], "hexpm", "52b2871a7515a5ac49b00f214e4165a40724cf99798d8e4a65e4fd64ebd002c1"},
-  "pkt": {:git, "https://github.com/se-apc/pkt.git", "8c826b25098b06db8c24805fb1da2d65c14abe06", []},
+  "pkt": {:git, "https://github.com/msantos/pkt.git", "8c826b25098b06db8c24805fb1da2d65c14abe06", []},
   "procket": {:git, "https://github.com/se-apc/procket.git", "5d3fee6cf31d624eebad06f9d55d4780a41a54c2", []},
   "system_registry": {:hex, :system_registry, "0.8.2", "df791dc276652fcfb53be4dab823e05f8269b96ac57c26f86a67838dbc0eefe7", [:mix], [], "hexpm", "f7acdede22c73ab0b3735eead7f2095efb2a7a6198366564205274db2ca2a8f8"},
 }
