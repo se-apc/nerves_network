@@ -328,6 +328,14 @@ defmodule Nerves.Network.EAPoLManager do
     {:noreply, %{s | wpa_pid: nil}}
   end
 
+  #Handling events like:  {:"CTRL-REQ-PASSPHRASE", 0, "Private key passphrase needed for SSID nmc-eapol-eth0"}, %{ifname: "eth0"}}
+  def handle_info(event = {Nerves.WpaSupplicant, {id, net_id, message}, %{ifname: ifname}}, s) do
+    Logger.info("Forwarding event = #{inspect(event)}")
+
+    Utils.notify(__MODULE__, ifname, {id, net_id, message}, %{ifname: ifname})
+    {:noreply, s}
+  end
+
   def handle_info(event = {Nerves.WpaSupplicant, {id, message}, %{ifname: ifname}}, s) do
     Logger.info("Forwarding event = #{inspect(event)}")
 
