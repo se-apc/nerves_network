@@ -341,9 +341,9 @@ defmodule Nerves.Network.EAPoLManager do
     {:noreply, s}
   end
 
-  # Will be called on wpa_supplicant's port's exit. My come asynchronously so if stop is being invoked
-  # from the :start call we would not like to interfere with the state machine - maintaining the state
-  # in particular we do not want to touch the supplicant_port .
+  # Will be called on wpa_supplicant's port's exit. It may come asynchronously, so if stop is being invoked
+  # from the :start call, we would not like to interfere with the state machine - maintaining the state.
+  # In particular we do not want to touch the :supplicant_port field of the state map.
   def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
     Logger.warn("Exit status #{inspect(exit_status)}. It's O.K.")
 
