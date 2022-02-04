@@ -170,7 +170,6 @@ defmodule Nerves.Network.EAPoLManager do
     :timeout
   end
 
-
   defp start_wpa_supervisor(state) do
     child =
       Supervisor.child_spec(
@@ -198,16 +197,6 @@ defmodule Nerves.Network.EAPoLManager do
 
     # The WPA control pipe should not exist. Just in case the terminated wpa_supplicant process would not have removed it, we
     # shall do that.
-    if File.exists?(wpa_control_pipe(state)) do
-      case File.rm(wpa_control_pipe(state)) do
-        :ok ->
-          :ok
-
-        {:error, reason} ->
-          Logger.error("Unable to remove #{wpa_control_pipe(state)} reason: #{inspect reason}")
-      end
-    end
-
     with :ok <- write_wpa_conf(state) do
       port = start_supplicant_port(state)
 
@@ -352,10 +341,13 @@ defmodule Nerves.Network.EAPoLManager do
     {:noreply, s}
   end
 
-  # Will be called on wpa_supplicant's port's exit
+  # Will be called on wpa_supplicant's port's exit. My come asynchronously so if stop is being invoked
+  # from the :start call we would not like to interfere with the state machine - maintaining the state
+  # in particular we do not want to touch the supplicant_port .
   def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
     Logger.warn("Exit status #{inspect(exit_status)}. It's O.K.")
-    {:noreply, %{state | supplicant_port: nil}}
+
+    {:noreply, state}
   end
 
   def handle_info({_pid, {:exit_status, exit_status}}, state) do
@@ -417,11 +409,11 @@ defmodule Nerves.Network.EAPoLManager do
 
   """
   def start(ifname, setup) do
-    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:start, setup})
+    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:start, setup}, 11_111)
   end
 
   def start(ifname) do
-    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :start)
+    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :start, 11_111)
   end
 
   @doc """
