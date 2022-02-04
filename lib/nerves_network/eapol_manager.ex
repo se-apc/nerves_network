@@ -195,8 +195,6 @@ defmodule Nerves.Network.EAPoLManager do
   defp start_wpa(state) do
     state = stop_wpa(state)
 
-    # The WPA control pipe should not exist. Just in case the terminated wpa_supplicant process would not have removed it, we
-    # shall do that.
     with :ok <- write_wpa_conf(state) do
       port = start_supplicant_port(state)
 
