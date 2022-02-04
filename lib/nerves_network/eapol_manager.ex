@@ -409,11 +409,11 @@ defmodule Nerves.Network.EAPoLManager do
 
   """
   def start(ifname, setup) do
-    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:start, setup}, 11_111)
+    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", {:start, setup})
   end
 
   def start(ifname) do
-    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :start, 11_111)
+    GenServer.call(:"Elixir.Nerves.Network.EAPoLManager.#{ifname}", :start)
   end
 
   @doc """
