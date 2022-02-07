@@ -195,6 +195,17 @@ defmodule Nerves.Network.EAPoLManager do
   defp start_wpa(state) do
     state = stop_wpa(state)
 
+    # The WPA control pipe should not exist. It may appen though that process ends abruptly i.e. SIGSEGV or sigkill 9.
+    if File.exists?(wpa_control_pipe(state)) do
+      case File.rm(wpa_control_pipe(state)) do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          Logger.error("Unable to remove #{wpa_control_pipe(state)} reason: #{inspect reason}")
+      end
+    end
+
     with :ok <- write_wpa_conf(state) do
       port = start_supplicant_port(state)
 
