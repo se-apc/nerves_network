@@ -19,14 +19,14 @@ defmodule Nerves.Network.Utils do
     end)
   end
 
+  def generate_link_local(mac_address, nil) do
+    generate_link_local(mac_address, @default_available_subnets)
+  end
+
   def generate_link_local(mac_address, available_subnets_list) do
     <<x, y, _rest :: bytes>> = :crypto.hash(:md5, mac_address)
     Enum.at(available_subnets_list, x, Enum.random(available_subnets_list))
     "169.254.#{x}.#{y}"
-  end
-
-  def generate_link_local(mac_address, nil) do
-    generate_link_local(mac_address, @default_available_subnets)
   end
 
   def generate_link_local(mac_address) do
