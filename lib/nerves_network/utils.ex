@@ -4,8 +4,6 @@ defmodule Nerves.Network.Utils do
 
   use Bitwise
 
-  require Logger
-
   @default_available_subnets Enum.to_list(1..254)
 
   @doc false
