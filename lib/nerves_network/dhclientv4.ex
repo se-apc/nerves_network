@@ -70,7 +70,7 @@ defmodule Nerves.Network.Dhclientv4 do
   def stop(pid, reason \\ :unknown) do
     Logger.debug("Dhclientv4.stop pid: #{inspect(pid)}; reason = #{inspect reason}")
 
-    Process.info(pid)
+    Process.info(pid, [:reductions, :memory, :message_queue_len])
     |> do_stop(pid, reason)
   end
 
