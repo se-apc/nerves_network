@@ -10,7 +10,7 @@
   "makeup_elixir": {:hex, :makeup_elixir, "0.15.2", "dc72dfe17eb240552857465cc00cce390960d9a0c055c4ccd38b70629227e97c", [:mix], [{:makeup, "~> 1.0", [hex: :makeup, repo: "hexpm", optional: false]}, {:nimble_parsec, "~> 1.1", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm", "fd23ae48d09b32eff49d4ced2b43c9f086d402ee4fd4fcb2d7fad97fa8823e75"},
   "makeup_erlang": {:hex, :makeup_erlang, "0.1.1", "3fcb7f09eb9d98dc4d208f49cc955a34218fc41ff6b84df7c75b3e6e533cc65f", [:mix], [{:makeup, "~> 1.0", [hex: :makeup, repo: "hexpm", optional: false]}], "hexpm", "174d0809e98a4ef0b3309256cbf97101c6ec01c4ab0b23e926a9e17df2077cbb"},
   "muontrap": {:hex, :muontrap, "1.0.0", "53a05c37f71cc5070aaa0858a774ae1f500160b7186a70565521a14ef7843c5a", [:make, :mix], [{:elixir_make, "~> 0.6", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "0d3cd6e335986f9c2af1b61f583375b0f0d91cea95b7ec7bc720f330b4dc9b49"},
-  "nerves_network_interface": {:git, "https://github.com/se-apc/nerves_network_interface.git", "272e2cb568b975db6e0f1fa8a2869a617f4aee21", [branch: "master"]},
+  "nerves_network_interface": {:git, "https://github.com/se-apc/nerves_network_interface.git", "41a2ca3e1ae11bb0b0bb9502a9c05b2e050ad2d7", [branch: "master"]},
   "nerves_wpa_supplicant": {:git, "https://github.com/se-apc/nerves_wpa_supplicant.git", "528de5cd75a4025cb6aa672f0ea8265d004831e7", [branch: "master"]},
   "nimble_parsec": {:hex, :nimble_parsec, "1.2.0", "b44d75e2a6542dcb6acf5d71c32c74ca88960421b6874777f79153bbbbd7dccc", [:mix], [], "hexpm", "52b2871a7515a5ac49b00f214e4165a40724cf99798d8e4a65e4fd64ebd002c1"},
   "pkt": {:git, "https://github.com/msantos/pkt.git", "8c826b25098b06db8c24805fb1da2d65c14abe06", []},
