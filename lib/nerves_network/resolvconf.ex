@@ -354,7 +354,7 @@ defmodule Nerves.Network.Resolvconf do
   defp nameserver6_text(_), do: ""
 
   defp file_write(filename, []) do
-    File.write!(filename, [""])
+    File.write!(filename, "")
   end
 
   defp file_write(filename, list) do

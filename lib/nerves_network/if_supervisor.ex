@@ -46,10 +46,14 @@ defmodule Nerves.Network.IFSupervisor do
 
     Logger.debug(".setup manager_modules: #{inspect manager_modules}")
 
-    children =
+    children = []
       for manager <- manager_modules  do
         child_name = pname(ifname, manager)
-        worker(manager, [ifname, settings, [name: child_name]], [id: {pname(ifname), child_name}, restart: restart_type(manager)])
+        %{
+          id: {pname(ifname), child_name},
+          restart: restart_type(manager),
+          start: {child_name, :start_link, [ifname, settings, [name: child_name]]}
+          }
       end
 
     Logger.debug(".setup children: #{inspect children}")

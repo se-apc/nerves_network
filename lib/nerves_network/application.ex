@@ -15,13 +15,13 @@ defmodule Nerves.Network.Application do
     dhclientv6_config_file = ipv6[:config_file] || Nerves.Network.DhclientConf.default_dhclient_conf_path(:ipv6)
 
     children = [
-      supervisor(Registry, [:duplicate, Nerves.Dhclientv4], id: Nerves.Dhclientv4),
-      supervisor(Registry, [:duplicate, Nerves.Dhclient], id: Nerves.Dhclient),
-      worker(Nerves.Network.Resolvconf, [resolvconf_file, [name: Nerves.Network.Resolvconf]]),
+      {Registry, keys: :duplicate, name: Nerves.Dhclient},
+      {Registry, keys: :duplicate, name: Nerves.Dhclientv4},
+      Supervisor.child_spec({Nerves.Network.Resolvconf, [resolvconf_file]}, id: Nerves.Network.Resolvconf),
       Supervisor.child_spec({Nerves.Network.DhclientConf, [dhclientv4_config_file, [name: Nerves.Network.DhclientConf.Ipv4]]}, id: Nerves.Network.DhclientConf.Ipv4),
       Supervisor.child_spec({Nerves.Network.DhclientConf, [dhclientv6_config_file, [name: Nerves.Network.DhclientConf.Ipv6]]}, id: Nerves.Network.DhclientConf.Ipv6),
-      supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]]),
-      worker(Nerves.Network.Config, []),
+      Nerves.Network.IFSupervisor,
+      Nerves.Network.Config
     ]
 
     opts = [strategy: :rest_for_one, name: Nerves.Network.Supervisor]
