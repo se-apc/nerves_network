@@ -17,7 +17,6 @@ defmodule Nerves.Network.Dhclientv4 do
   require Logger
   alias Nerves.Network.Utils
 
-  @renew 1
   @release 2
   @terminate 3
 

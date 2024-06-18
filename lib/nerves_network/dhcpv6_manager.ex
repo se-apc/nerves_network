@@ -312,7 +312,7 @@ defmodule Nerves.Network.DHCPv6Manager do
 
   # Catch-all handler for consume
   defp consume(context, event, state) do
-    Logger.warn("Unhandled event #{inspect(event)} for context #{inspect(context)} in consume/3.")
+    Logger.warning("Unhandled event #{inspect(event)} for context #{inspect(context)} in consume/3.")
     state
   end
 
@@ -380,7 +380,7 @@ defmodule Nerves.Network.DHCPv6Manager do
         :ok
 
       other ->
-        Logger.warn("Unexpected return #{inspect other} from Nerves.NetworkInterface.setup(#{inspect state.ifname}, #{inspect info}")
+        Logger.warning("Unexpected return #{inspect other} from Nerves.NetworkInterface.setup(#{inspect state.ifname}, #{inspect info}")
         :ok
 
         # It may very often happen that at the renew time we would receive the lease of the very same IP address...
@@ -408,7 +408,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   defp configure(state, info) do
-    Logger.warn("DHCP state #{inspect(state)} #{inspect(info)}")
+    Logger.warning("DHCP state #{inspect(state)} #{inspect(info)}")
 
     # We want to fetch the key :ipv6_dhcp = [:stateful | :stateless] from the state.settings list of key-value pairs
     # and implant it in the info map communicated to the registered listeners

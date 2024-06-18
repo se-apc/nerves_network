@@ -35,15 +35,9 @@ defmodule Nerves.Network.EAPoLManager do
           :private_key_passwd => String.t() | nil
         }
 
-  # The following are Nerves locations of the supplicant. If not using
-  # Nerves, these may be different.
-  @default_wpa_supplicant_path "/usr/sbin/wpa_supplicant"
-  @default_wpa_control_path "/var/run/wpa_supplicant"
-  @default_wpa_config_file_prefix "/var/run/nerves_network_wpa_eapol.conf"
-
-  @wpa_supplicant_path Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_supplicant_path] || @default_wpa_supplicant_path
-  @wpa_control_path Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_control_path] || @default_wpa_control_path
-  @wpa_config_file_prefix Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_config_file_prefix] || @default_wpa_config_file_prefix
+  @wpa_supplicant_path Application.compile_env(:nerves_network, :eapolmanager, [])[:wpa_supplicant_path] || @default_wpa_supplicant_path
+  @wpa_control_path Application.compile_env(:nerves_network, :eapolmanager, [])[:wpa_control_path] || @default_wpa_control_path
+  @wpa_config_file_prefix Application.compile_env(:nerves_network, :eapolmanager, [])[:wpa_config_file_prefix] || @default_wpa_config_file_prefix
 
   @doc false
   @spec start_link(Types.ifname(), Nerves.Network.setup_settings(), GenServer.options()) :: GenServer.on_start()
@@ -57,7 +51,7 @@ defmodule Nerves.Network.EAPoLManager do
         Logger.debug("Succesfuly registered #{ifname} to #{inspect(registry_name)}")
 
       {:error, {:already_registered, _pid}} ->
-        Logger.warn("Already registered #{ifname} to #{inspect(registry_name)}")
+        Logger.warning("Already registered #{ifname} to #{inspect(registry_name)}")
     end
   end
 
@@ -216,7 +210,7 @@ defmodule Nerves.Network.EAPoLManager do
         :ok ->
           Logger.debug("Control pipe exists. Starting wpa_ex...")
         :timeout ->
-          Logger.warn("WPA control pipe #{inspect wpa_control_pipe(state)} not created on time!")
+          Logger.warning("WPA control pipe #{inspect wpa_control_pipe(state)} not created on time!")
       end
 
       pid = start_wpa_supervisor(state)
@@ -294,13 +288,13 @@ defmodule Nerves.Network.EAPoLManager do
   end
 
   def handle_call(:reconfigure, _from, state = %{wpa_pid: _wpa_pid}) do
-    Logger.warn("WPA is not started - skipping :reconfigure")
+    Logger.warning("WPA is not started - skipping :reconfigure")
 
     {:reply, {:error, :not_started}, state}
   end
 
   def handle_call(unknown, _from, state) do
-    Logger.warn("Unknown call #{inspect(unknown)}")
+    Logger.warning("Unknown call #{inspect(unknown)}")
 
     {:reply, :ok, state}
   end
@@ -354,14 +348,14 @@ defmodule Nerves.Network.EAPoLManager do
   # from the :start call, we would not like to interfere with the state machine - maintaining the state.
   # In particular we do not want to touch the :supplicant_port field of the state map.
   def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
-    Logger.warn("Exit status #{inspect(exit_status)}. It's O.K.")
+    Logger.warning("Exit status #{inspect(exit_status)}. It's O.K.")
 
     {:noreply, state}
   end
 
   def handle_info({_pid, {:exit_status, exit_status}}, state) do
     # IF exited abnormaly - exit code != 0 then we shall attempt to restart the wpa_supplicant and associated ports
-    Logger.warn("Exit status #{inspect(exit_status)}. Re-starting...")
+    Logger.warning("Exit status #{inspect(exit_status)}. Re-starting...")
     {:noreply, start_wpa(%{state | supplicant_port: nil})}
   end
 
@@ -372,7 +366,7 @@ defmodule Nerves.Network.EAPoLManager do
   end
 
   def terminate(reason, state) do
-    Logger.warn("#{__MODULE__} Terminating... reason: #{inspect reason}")
+    Logger.warning("#{__MODULE__} Terminating... reason: #{inspect reason}")
 
     # We are emitting a Nerves.Network.EAPoLManager's termination event so it could eventually get re-started
     Utils.notify(__MODULE__, state.ifname, {:terminating, __MODULE__}, %{ifname: state.ifname})

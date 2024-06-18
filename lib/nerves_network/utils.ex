@@ -2,14 +2,14 @@ defmodule Nerves.Network.Utils do
   @moduledoc false
   @scope [:state, :network_interface]
 
-  use Bitwise
+  import Bitwise
 
   @default_available_subnets Enum.to_list(1..254)
 
   @doc false
   def log_atomized_iface_error(ifname) when is_atom(ifname) do
     require Logger
-    Logger.warn "Support for atom interface names is deprecated. Please consider calling as \"#{ifname}\"."
+    Logger.warning "Support for atom interface names is deprecated. Please consider calling as \"#{ifname}\"."
   end
 
 
