@@ -36,9 +36,10 @@ defmodule Nerves.Network.Resolvconf do
   @doc """
   Start the resolv.conf manager.
   """
-  @spec start_link(Path.t(), GenServer.options()) :: GenServer.on_start()
-  def start_link(resolvconf_path \\ @resolvconf_path, opts \\ []) do
-    GenServer.start_link(__MODULE__, resolvconf_path, opts)
+  @spec start_link(any()) :: GenServer.on_start()
+  def start_link(_) do
+    [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
+    GenServer.start_link(__MODULE__, resolvconf_file, name: __MODULE__)
   end
 
   @doc """

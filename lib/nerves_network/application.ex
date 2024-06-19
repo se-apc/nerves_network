@@ -7,7 +7,6 @@ defmodule Nerves.Network.Application do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
     [ipv4: ipv4] = Application.get_env(:nerves_network, :dhclientv4, [])
     [ipv6: ipv6] = Application.get_env(:nerves_network, :dhclientv6, [])
 
@@ -17,9 +16,9 @@ defmodule Nerves.Network.Application do
     children = [
       {Registry, keys: :duplicate, name: Nerves.Dhclient},
       {Registry, keys: :duplicate, name: Nerves.Dhclientv4},
-      Supervisor.child_spec({Nerves.Network.Resolvconf, [resolvconf_file]}, id: Nerves.Network.Resolvconf),
-      Supervisor.child_spec({Nerves.Network.DhclientConf, [dhclientv4_config_file, [name: Nerves.Network.DhclientConf.Ipv4]]}, id: Nerves.Network.DhclientConf.Ipv4),
-      Supervisor.child_spec({Nerves.Network.DhclientConf, [dhclientv6_config_file, [name: Nerves.Network.DhclientConf.Ipv6]]}, id: Nerves.Network.DhclientConf.Ipv6),
+      Nerves.Network.Resolvconf,
+      %{id: Nerves.Network.DhclientConf.Ipv4, start: {Nerves.Network.DhclientConf, :start_link, [dhclientv4_config_file, Nerves.Network.DhclientConf.Ipv4]}},
+      %{id: Nerves.Network.DhclientConf.Ipv6, start: {Nerves.Network.DhclientConf, :start_link, [dhclientv6_config_file, Nerves.Network.DhclientConf.Ipv6]}},
       Nerves.Network.IFSupervisor,
       Nerves.Network.Config
     ]
