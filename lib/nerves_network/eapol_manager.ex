@@ -35,9 +35,23 @@ defmodule Nerves.Network.EAPoLManager do
           :private_key_passwd => String.t() | nil
         }
 
-  @wpa_supplicant_path Application.compile_env(:nerves_network, :eapolmanager, [])[:wpa_supplicant_path] || @default_wpa_supplicant_path
-  @wpa_control_path Application.compile_env(:nerves_network, :eapolmanager, [])[:wpa_control_path] || @default_wpa_control_path
-  @wpa_config_file_prefix Application.compile_env(:nerves_network, :eapolmanager, [])[:wpa_config_file_prefix] || @default_wpa_config_file_prefix
+  # The following are Nerves locations of the supplicant. If not using
+  # Nerves, these may be different.
+  @default_wpa_supplicant_path "/usr/sbin/wpa_supplicant"
+  @default_wpa_control_path "/var/run/wpa_supplicant"
+  @default_wpa_config_file_prefix "/var/run/nerves_network_wpa_eapol.conf"
+
+  def wpa_supplicant_path() do
+    Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_supplicant_path] || @default_wpa_supplicant_path
+  end
+
+  def wpa_control_path() do
+    Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_control_path] || @default_wpa_control_path
+  end
+
+  def wpa_config_file_prefix() do
+    Application.get_env(:nerves_network, :eapolmanager, [])[:wpa_config_file_prefix] || @default_wpa_config_file_prefix
+  end
 
   @doc false
   @spec start_link(Types.ifname(), Nerves.Network.setup_settings(), GenServer.options()) :: GenServer.on_start()
@@ -71,7 +85,7 @@ defmodule Nerves.Network.EAPoLManager do
       ifname: ifname,
       wpa_pid: nil,
       supplicant_port: nil,
-      wpa_ctrl_iface: @wpa_control_path
+      wpa_ctrl_iface: wpa_control_path()
     }
 
     {:ok, state}
@@ -118,7 +132,7 @@ defmodule Nerves.Network.EAPoLManager do
   end
 
   defp wpa_config_file(state) do
-    @wpa_config_file_prefix <> ".#{state.ifname}"
+    wpa_config_file_prefix() <> ".#{state.ifname}"
   end
 
   @spec write_wpa_conf(t()) :: :ok | {:error, term()}
@@ -128,13 +142,13 @@ defmodule Nerves.Network.EAPoLManager do
 
   @spec wpa_control_pipe(t()) :: String.t()
   defp wpa_control_pipe(state) do
-    @wpa_control_path <> "/#{state.ifname}"
+    wpa_control_path() <> "/#{state.ifname}"
   end
 
   defp start_supplicant_port(state) do
     port =
       Port.open(
-        {:spawn_executable, @wpa_supplicant_path},
+        {:spawn_executable, wpa_supplicant_path()},
         [
           {:args,
            [
@@ -228,7 +242,7 @@ defmodule Nerves.Network.EAPoLManager do
 
       {output, error_code} ->
         Logger.error(
-          "#{@wpa_supplicant_path} exited with #{inspect(error_code)} output = #{output}!"
+          "#{wpa_supplicant_path()} exited with #{inspect(error_code)} output = #{output}!"
         )
 
         state
