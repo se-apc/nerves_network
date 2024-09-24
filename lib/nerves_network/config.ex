@@ -11,9 +11,9 @@ defmodule Nerves.Network.Config  do
   @scope [:config, :network_interface]
   @priority :nerves_network
 
-    def start_link do
-      GenServer.start_link(__MODULE__, [], name: __MODULE__)
-    end
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  end
 
   @spec put(Types.ifname, Nerves.Network.setup_settings, atom) :: {:ok, {old :: map, new ::map}}
   def put(iface, config, priority \\ @priority) do

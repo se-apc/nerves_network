@@ -204,67 +204,6 @@ defmodule Nerves.Network.DHCPManager do
     |> deconfigure_if_gateway_not_pingable(info)
   end
 
-
-  # When the netmask is empty (no such entry in the leases DB fetch the netmask information directly from
-  # network interface
-  defp obtain_prefix_len(ifname, _subnet_mask = "") do
-    {:ok, %{ipv4_subnet_mask: subnet_mask}} = Nerves.NetworkInterface.settings(ifname)
-
-    subnet_mask
-    |> Nerves.Network.Utils.subnet_to_prefix_len()
-  end
-
-  defp obtain_prefix_len(_ifname, subnet_mask) do
-    subnet_mask
-    |> Nerves.Network.Utils.subnet_to_prefix_len()
-  end
-
-  # When there's no entry of leased  ipv4_address in the leases DB fetch the address information directly from
-  # the network interface
-  defp obtain_ipv4_address(ifname, _ipv4_address = "") do
-    {:ok, %{ipv4_address: address}} = Nerves.NetworkInterface.settings(ifname)
-
-    address
-  end
-
-  defp obtain_ipv4_address(ifname, address) do
-    address
-  end
-
-  # Yes gateway is pingable
-  def deconfigure_if_gateway_not_pingable({:ok, _host, _address, _reply_addr, _details, _payload}, state, _info) do
-    Logger.debug("Gateway pingable - leaving the leased configuration...")
-    Logger.debug("  state = #{inspect state}")
-
-    state
-    |> goto_context(:dhcp)
-  end
-
-
-  def deconfigure_if_gateway_not_pingable(_, state, info) do
-    Logger.debug("Gateway unpingable - deconfiguring interface #{state.ifname}...")
-
-    %{ipv4_address: ipv4_address, ipv4_subnet_mask: subnet_mask} = info
-
-    prefix_len = obtain_prefix_len(state.ifname, subnet_mask) |> to_string()
-    address    = obtain_ipv4_address(state.ifname, ipv4_address)
-
-    Logger.info("-ipv4_address #{inspect address}:#{inspect prefix_len}")
-
-    Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{address}:#{prefix_len}"})
-
-    state
-    |> goto_context(:dhcp)
-  end
-
-  def deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) when is_binary(ipv4_gateway) do
-    ipv4_gateway
-    |> to_charlist()
-    |> :gen_icmp.ping([ttl: 1, timeout: 3000, timestamp: false])
-    |> Enum.at(0, {:error, :unknown})
-    |> deconfigure_if_gateway_not_pingable(state, info)
-  end
-
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
   defp consume(:dhcp, :ifdown, state) do
     Logger.debug(":dhcp, :ifdown istate = #{inspect state}")
@@ -389,8 +328,68 @@ defmodule Nerves.Network.DHCPManager do
 
   # Catch-all handler for consume
   defp consume(context, event, state) do
-    Logger.warn("Unhandled event #{inspect(event)} for context #{inspect(context)} in consume/3.")
+    Logger.warning("Unhandled event #{inspect(event)} for context #{inspect(context)} in consume/3.")
     state
+  end
+
+  # When the netmask is empty (no such entry in the leases DB fetch the netmask information directly from
+  # network interface
+  defp obtain_prefix_len(ifname, _subnet_mask = "") do
+    {:ok, %{ipv4_subnet_mask: subnet_mask}} = Nerves.NetworkInterface.settings(ifname)
+
+    subnet_mask
+    |> Nerves.Network.Utils.subnet_to_prefix_len()
+  end
+
+  defp obtain_prefix_len(_ifname, subnet_mask) do
+    subnet_mask
+    |> Nerves.Network.Utils.subnet_to_prefix_len()
+  end
+
+  # When there's no entry of leased  ipv4_address in the leases DB fetch the address information directly from
+  # the network interface
+  defp obtain_ipv4_address(ifname, _ipv4_address = "") do
+    {:ok, %{ipv4_address: address}} = Nerves.NetworkInterface.settings(ifname)
+
+    address
+  end
+
+  defp obtain_ipv4_address(_ifname, address) do
+    address
+  end
+
+  # Yes gateway is pingable
+  def deconfigure_if_gateway_not_pingable({:ok, _host, _address, _reply_addr, _details, _payload}, state, _info) do
+    Logger.debug("Gateway pingable - leaving the leased configuration...")
+    Logger.debug("  state = #{inspect state}")
+
+    state
+    |> goto_context(:dhcp)
+  end
+
+
+  def deconfigure_if_gateway_not_pingable(_, state, info) do
+    Logger.debug("Gateway unpingable - deconfiguring interface #{state.ifname}...")
+
+    %{ipv4_address: ipv4_address, ipv4_subnet_mask: subnet_mask} = info
+
+    prefix_len = obtain_prefix_len(state.ifname, subnet_mask) |> to_string()
+    address    = obtain_ipv4_address(state.ifname, ipv4_address)
+
+    Logger.info("-ipv4_address #{inspect address}:#{inspect prefix_len}")
+
+    Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{address}:#{prefix_len}"})
+
+    state
+    |> goto_context(:dhcp)
+  end
+
+  def deconfigure_if_gateway_not_pingable(state, info = %{ipv4_gateway: ipv4_gateway}) when is_binary(ipv4_gateway) do
+    ipv4_gateway
+    |> to_charlist()
+    |> :gen_icmp.ping([ttl: 1, timeout: 3000, timestamp: false])
+    |> Enum.at(0, {:error, :unknown})
+    |> deconfigure_if_gateway_not_pingable(state, info)
   end
 
   def stop_dhclient(state, reason \\ :unknown) do
@@ -410,11 +409,17 @@ defmodule Nerves.Network.DHCPManager do
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
   end
 
+  defp setup(ifname, opts) do
+    res = Nerves.NetworkInterface.setup(ifname, opts)
+    {res, opts}
+  end
+
   defp start_link_local(state) do
     with {:ok, ifstatus} <- Nerves.NetworkInterface.status(state.ifname),
-         :ok <- Nerves.NetworkInterface.setup(state.ifname, ipv4_address: ip = generate_link_local(ifstatus.mac_address)),
+         {:ok, opts} <- setup(state.ifname, ipv4_address: generate_link_local(ifstatus.mac_address)),
          {:ok, settings} <- Nerves.NetworkInterface.settings(state.ifname) do
 
+      ip = opts[:ipv4_address]
       scope(state.ifname)
       |> SystemRegistry.update(%{ipv4_address: ip})
 
@@ -459,16 +464,10 @@ defmodule Nerves.Network.DHCPManager do
         Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => "#{old_ip}:#{prefix_len}"})
       end
     else
-      err -> Logger.warn("Unable to fetch settings for #{inspect info[:ifname]} err = #{inspect err}")
+      err -> Logger.warning("Unable to fetch settings for #{inspect info[:ifname]} err = #{inspect err}")
     end
 
     :ok
-  end
-
-  defp configure(:no_resolv_conf, state, info) do
-    remove_old_ip(state, info)
-    :ok = setup_iface(state, info)
-    state
   end
 
   defp configure(state, info) do

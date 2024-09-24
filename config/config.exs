@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
 

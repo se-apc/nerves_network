@@ -16,7 +16,7 @@ defmodule Nerves.Network.IFSupervisor do
 
   @spec start_link(GenServer.options) :: GenServer.on_start()
   def start_link(options \\ []) do
-    {:ok, sup_pid} = Supervisor.start_link(__MODULE__, [], options)
+    {:ok, sup_pid} = Supervisor.start_link(__MODULE__, [], options ++ [name: __MODULE__])
     Logger.debug fn -> "#{__MODULE__}: sup_pid = #{inspect sup_pid}" end
     {:ok, sup_pid}
   end
@@ -49,7 +49,11 @@ defmodule Nerves.Network.IFSupervisor do
     children =
       for manager <- manager_modules  do
         child_name = pname(ifname, manager)
-        worker(manager, [ifname, settings, [name: child_name]], [id: {pname(ifname), child_name}, restart: restart_type(manager)])
+        %{
+          id: {pname(ifname), child_name},
+          restart: restart_type(manager),
+          start: {manager, :start_link, [ifname, settings, [name: child_name]]}
+          }
       end
 
     Logger.debug(".setup children: #{inspect children}")

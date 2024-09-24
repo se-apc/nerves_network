@@ -131,7 +131,7 @@ defmodule Nerves.Network do
   """
   @spec set_regulatory_domain(String.t) :: :ok
   def set_regulatory_domain(country) do
-    Logger.warn "Regulatory domain currently can only be updated on WiFi device addition."
+    Logger.warning "Regulatory domain currently can only be updated on WiFi device addition."
     Application.put_env(:nerves_network, :regulatory_domain, country)
   end
 end

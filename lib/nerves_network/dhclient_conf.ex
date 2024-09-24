@@ -110,9 +110,9 @@ defmodule Nerves.Network.DhclientConf do
   @doc """
   Start the resolv.conf manager.
   """
-  @spec start_link(Path.t, GenServer.options) :: GenServer.on_start
-  def start_link([dhclient_conf_path, [name: server_name]], opts \\ []) do
-    Logger.info "start_link: server_name = #{inspect server_name} dhclient_conf_path = #{inspect dhclient_conf_path} opts = #{inspect opts}"
+  @spec start_link(Path.t, any()) :: GenServer.on_start
+  def start_link(dhclient_conf_path, server_name) do
+    Logger.info "start_link: server_name = #{inspect server_name} dhclient_conf_path = #{inspect dhclient_conf_path}"
     GenServer.start_link(__MODULE__, dhclient_conf_path, [name: server_name])
   end
 
