@@ -405,10 +405,11 @@ defmodule Nerves.Network.DHCPv6Manager do
     remove_old_ip(state, info)
     :ok = setup_iface(state, Map.put(info, :dhcpv6_mode, Keyword.get(state.settings, :ipv6_dhcp)))
     state
+    |> Map.put(:info, info)
   end
 
   defp configure(state, info) do
-    Logger.warning("DHCP state #{inspect(state)} #{inspect(info)}")
+    Logger.debug("DHCP state: #{inspect(state)}; info: #{inspect(info)}")
 
     # We want to fetch the key :ipv6_dhcp = [:stateful | :stateless] from the state.settings list of key-value pairs
     # and implant it in the info map communicated to the registered listeners
@@ -416,6 +417,7 @@ defmodule Nerves.Network.DHCPv6Manager do
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
 
     state
+    |> Map.put(:info, info)
   end
 
   defp flush_resolv_conf_on_deconfig?() do
@@ -440,5 +442,10 @@ defmodule Nerves.Network.DHCPv6Manager do
       :ok = Nerves.Network.Resolvconf.set_ipv6_nameservers(Nerves.Network.Resolvconf, state.ifname, [])
     end
     state
+    |> Map.put(:info, %{})
+  end
+
+  def handle_call(:get_lease_info, _from, state) do
+    {:reply, Map.get(state, :info, %{}), state}
   end
 end

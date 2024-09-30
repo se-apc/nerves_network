@@ -256,14 +256,19 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
     /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s\n",
+    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
            argv[0],
             getenv_nonull("reason"),
             getenv_nonull("interface"),
             get_ip6_addr(&new_ip6_addr[0], new_ip6_prefix, new_ip6_address, new_ip6_prefixlen),
             getenv_nonull("new_dhcp6_domain_search"),
             getenv_nonull("new_dhcp6_name_servers"),
-            get_ip6_addr(&old_ip6_addr[0], old_ip6_prefix, old_ip6_address, old_ip6_prefixlen)
+            get_ip6_addr(&old_ip6_addr[0], old_ip6_prefix, old_ip6_address, old_ip6_prefixlen),
+            getenv_nonull("new_dhcp6_server_id"),
+            getenv_nonull("new_life_starts"),
+            getenv_nonull("new_max_life"), /* the so called valid leas time */
+            getenv_nonull("new_preferred_life"),
+            getenv_nonull("new_iaid")
             );
 }
 
