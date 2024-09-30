@@ -266,7 +266,7 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
             get_ip6_addr(&old_ip6_addr[0], old_ip6_prefix, old_ip6_address, old_ip6_prefixlen),
             getenv_nonull("new_dhcp6_server_id"),
             getenv_nonull("new_life_starts"),
-            getenv_nonull("new_max_life"), /* the so called valid leas time */
+            getenv_nonull("new_max_life"), /* the so called valid lease time */
             getenv_nonull("new_preferred_life"),
             getenv_nonull("new_iaid")
             );
