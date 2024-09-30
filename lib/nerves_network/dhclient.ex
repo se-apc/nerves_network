@@ -224,6 +224,14 @@ defmodule Nerves.Network.Dhclient do
     |> handle_dhclient(state)
   end
 
+  defp to_integer(arg) when is_integer(arg), do: arg
+  defp to_integer(arg) do
+    String.to_integer(arg)
+    rescue
+    _error ->
+       0
+  end
+
   defp handle_dhclient(["deconfig", ifname | _rest], state) do
     Logger.debug("dhclient: deconfigure #{ifname}")
 
@@ -234,7 +242,7 @@ defmodule Nerves.Network.Dhclient do
   # Handling informational debug prints from the dhclient
   defp handle_dhclient([message], state) do
     Logger.debug(fn ->
-      "#{__MODULE__} handle_dhclient args = #{inspect(message)} state = #{inspect(state)}"
+      "#{__MODULE__} handle_dhclient message = #{inspect(message)} state = #{inspect(state)}"
     end)
 
     {:noreply, state}
@@ -243,7 +251,7 @@ defmodule Nerves.Network.Dhclient do
   # TODO: scribe PREINIT6 handler
   # [".../dhclient_wrapper", "PREINIT6", "eth1", "", "", ""] state = %{ifname: "eth1", port: #Port<0.5567>}
 
-  defp handle_dhclient([_originator, "REBIND6", ifname, ip, domain_search, dns, old_ip], state) do
+  defp handle_dhclient([_originator, "REBIND6", ifname, ip, domain_search, dns, old_ip, server_id, start_time, valid_lifetime, preferred_lifetime, ia_id], state) do
     dnslist = String.split(dns, " ")
 
     Logger.debug(fn ->
@@ -257,13 +265,20 @@ defmodule Nerves.Network.Dhclient do
       ipv6_address: ip,
       ipv6_domain: domain_search,
       ipv6_nameservers: dnslist,
-      old_ipv6_address: old_ip
+      old_ipv6_address: old_ip,
+      ipv6_lease: %{
+        server_id: server_id,
+        start_time: start_time |> to_integer(),
+        valid_lifetime: valid_lifetime |> to_integer(),
+        preferred_lifetime: preferred_lifetime |> to_integer(),
+        ia_id: ia_id
+      }
     })
 
     {:noreply, state}
   end
 
-  defp handle_dhclient([_originator, "BOUND6", ifname, ip, domain_search, dns, old_ip], state) do
+  defp handle_dhclient([_originator, "BOUND6", ifname, ip, domain_search, dns, old_ip, server_id, start_time, valid_lifetime, preferred_lifetime, ia_id], state) do
     dnslist = String.split(dns, " ")
 
     Logger.debug(fn ->
@@ -277,13 +292,20 @@ defmodule Nerves.Network.Dhclient do
       ipv6_address: ip,
       ipv6_domain: domain_search,
       ipv6_nameservers: dnslist,
-      old_ipv6_address: old_ip
+      old_ipv6_address: old_ip,
+      ipv6_lease: %{
+        server_id: server_id,
+        start_time: start_time |> to_integer(),
+        valid_lifetime: valid_lifetime |> to_integer(),
+        preferred_lifetime: preferred_lifetime |> to_integer(),
+        ia_id: ia_id
+      }
     })
 
     {:noreply, state}
   end
 
-  defp handle_dhclient([_originator, "RENEW6", ifname, ip, domain_search, dns, old_ip], state) do
+  defp handle_dhclient([_originator, "RENEW6", ifname, ip, domain_search, dns, old_ip, server_id, start_time, valid_lifetime, preferred_lifetime, ia_id], state) do
     dnslist = String.split(dns, " ")
     Logger.debug("dhclient: renew #{ifname}")
 
@@ -292,7 +314,14 @@ defmodule Nerves.Network.Dhclient do
       ipv6_address: ip,
       ipv6_domain: domain_search,
       ipv6_nameservers: dnslist,
-      old_ipv6_address: old_ip
+      old_ipv6_address: old_ip,
+      ipv6_lease: %{
+        server_id: server_id,
+        start_time: start_time |> to_integer(),
+        valid_lifetime: valid_lifetime |> to_integer(),
+        preferred_lifetime: preferred_lifetime |> to_integer(),
+        ia_id: ia_id
+      }
     })
 
     {:noreply, state}
@@ -332,8 +361,6 @@ defmodule Nerves.Network.Dhclient do
   end
 
   defp handle_dhclient(_something_else, state) do
-    # msg = List.foldl(something_else, "", &<>/2)
-    # Logger.debug "dhclient: ignoring unhandled message: #{msg}"
     {:noreply, state}
   end
 end

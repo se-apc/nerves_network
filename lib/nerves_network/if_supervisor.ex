@@ -192,6 +192,14 @@ defmodule Nerves.Network.IFSupervisor do
       end
   end
 
+  def call(ifname, whom, func, timeout \\ 5_000) when is_binary(ifname) do
+    with pid when is_pid(pid) <- Process.whereis(pname(ifname, whom)) do
+        GenServer.call(pid, func, timeout)
+    else
+      nil -> {:error, :not_started}
+      end
+  end
+
   @spec pname(Types.ifname) :: atom
   defp pname(ifname) when is_atom(ifname) do
     ifname
