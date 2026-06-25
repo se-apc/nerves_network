@@ -40,7 +40,7 @@ defmodule Nerves.Network.Mixfile do
   defp deps do
     [
       {:system_registry, "~> 0.8"},
-      {:muontrap, "~> 1.0"},
+      {:muontrap, github: "se-apc/muontrap", branch: "main"},
       {:nerves_network_interface, github: "se-apc/nerves_network_interface", branch: "master", override: true},
       {:nerves_wpa_supplicant, github: "se-apc/nerves_wpa_supplicant", branch: "master", override: true},
       {:gen_icmp, github: "msantos/gen_icmp"},
