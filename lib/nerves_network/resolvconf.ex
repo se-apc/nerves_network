@@ -397,7 +397,7 @@ defmodule Nerves.Network.Resolvconf do
     Logger.debug("nameservers_super  = #{inspect(nameservers_super)}")
     Logger.debug("domains            = #{inspect(domains)}")
 
-    file_write(state.filename, domains ++ static_nameservers ++ nameservers ++ nameservers6)
+    file_write(state.filename, domains ++ static_nameservers ++ nameservers6 ++ nameservers)
   end
 
   @spec entry_to_map(String.t(), String.t(), ifmap) :: ifmap
